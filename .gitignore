@@ -1,0 +1,51 @@
+# ==========================================
+# 공통 (IDE, OS)
+# ==========================================
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+*.swp
+
+# ==========================================
+# Backend (Spring Boot / Gradle)
+# ==========================================
+# 백엔드 폴더 내부의 빌드 결과물과 설정들
+backend/.gradle/
+backend/build/
+backend/out/
+backend/bin/
+backend/.settings/
+backend/.project/
+backend/.classpath/
+
+# 로컬 DB나 로그 파일 (있을 경우)
+backend/*.log
+backend/help.md
+
+# ==========================================
+# Frontend (React / Vite / Node)
+# ==========================================
+# 제일 중요한 놈 (절대 올리면 안 됨)
+frontend/node_modules/
+
+# 빌드 결과물 (배포용 파일들)
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+
+# 환경 변수 파일 (보안상 절대 금지!)
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# npm 로그들
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Vite 설정 관련
+frontend/.vite/
