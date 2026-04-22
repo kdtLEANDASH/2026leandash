@@ -1,0 +1,168 @@
+.employee-detail-page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  padding-top: 96px;
+  box-sizing: border-box;
+}
+
+.employee-detail-layout {
+  display: flex;
+  min-height: calc(100vh - 96px);
+}
+
+.employee-sidebar {
+  width: 240px;
+  min-width: 240px;
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  padding: 28px 20px;
+}
+
+.sidebar-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 18px;
+}
+
+.department-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.department-list li + li {
+  margin-top: 10px;
+}
+
+.department-btn {
+  width: 100%;
+  height: 44px;
+  border: 1px solid #d9deea;
+  background: #f8fafc;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.employee-detail-content {
+  flex: 1;
+  padding: 32px;
+}
+
+.employee-detail-box {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.detail-header {
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 28px;
+}
+
+.detail-body {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.detail-info {
+  flex: 1;
+}
+
+.detail-info ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.detail-info li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 0;
+  border-bottom: 1px solid #eceff5;
+}
+
+.detail-info li strong {
+  font-size: 16px;
+  color: #111827;
+}
+
+.detail-info li span {
+  font-size: 15px;
+  color: #4b5563;
+  text-align: right;
+}
+
+.detail-profile {
+  width: 180px;
+  flex: 0 0 180px;
+  display: flex;
+  justify-content: center;
+}
+
+.detail-profile img {
+  width: 160px;
+  height: 160px;
+  border-radius: 20px;
+  object-fit: cover;
+  border: 1px solid #e5e7eb;
+}
+
+.detail-actions {
+  margin-top: 28px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.inquiry-btn,
+.action-btn,
+.chat-btn {
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+}
+
+.inquiry-btn,
+.chat-btn,
+.action-btn.active {
+  background: #1f2937;
+  color: #fff;
+}
+
+.action-btn {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.employee-bottom-actions {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.left-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.not-found-box {
+  max-width: 640px;
+  margin: 80px auto;
+  background: #fff;
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
