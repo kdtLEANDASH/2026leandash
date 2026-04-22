@@ -1,0 +1,124 @@
+.topnav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 96px;
+  z-index: 9999;
+  background: rgba(24, 28, 36, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+  transform: translateY(0) !important;
+  transition: none !important;
+}
+
+.topnav-inner {
+  width: min(1440px, calc(100% - 48px));
+  height: 100%;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.topnav-logo {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  text-decoration: none;
+}
+
+.topnav-logo img {
+  display: block;
+  height: 44px;
+  width: auto;
+  max-width: 180px;
+  object-fit: contain;
+}
+
+.topnav-menu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 34px;
+  flex: 1;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.topnav-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  position: relative;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.topnav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  width: 0;
+  height: 2px;
+  background: currentColor;
+  transition: width 0.25s ease;
+}
+
+.topnav-link:hover::after,
+.topnav-link.active::after {
+  width: 100%;
+}
+
+.topnav-right {
+  flex: 0 0 auto;
+}
+
+.topnav-right button {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.topnav-right button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+@media (max-width: 1200px) {
+  .topnav-menu {
+    gap: 20px;
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 900px) {
+  .topnav {
+    height: auto;
+    padding: 14px 0;
+  }
+
+  .topnav-inner {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .topnav-menu {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 14px 18px;
+  }
+}
