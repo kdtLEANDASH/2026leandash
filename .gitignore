@@ -7,6 +7,8 @@
 .DS_Store
 Thumbs.db
 *.swp
+.classpath
+.project
 
 # ==========================================
 # Backend (Spring Boot / Gradle)
