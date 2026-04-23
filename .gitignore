@@ -9,6 +9,9 @@ Thumbs.db
 *.swp
 .classpath
 .project
+.settings/
+bin/
+out/
 
 # ==========================================
 # Backend (Spring Boot / Gradle)
@@ -25,6 +28,8 @@ backend/.classpath/
 # 로컬 DB나 로그 파일 (있을 경우)
 backend/*.log
 backend/help.md
+backend/src/main/resources/application-local.yaml
+backend/src/main/resources/application-*.local.yaml
 
 # ==========================================
 # Frontend (React / Vite / Node)
