@@ -3,13 +3,10 @@
   min-height: 100vh;
 }
 
-/* TopNav 높이 맞춰서 내려주기 */
 .calendar-page-body {
   padding-top: 120px;
-  min-height: calc(100vh - 120px);
 }
 
-/* 전체 레이아웃 */
 .calendar-shell {
   width: min(1200px, calc(100% - 48px));
   margin: 0 auto;
@@ -18,7 +15,6 @@
   gap: 28px;
 }
 
-/* 사이드 */
 .calendar-sidebar {
   display: flex;
   flex-direction: column;
@@ -39,7 +35,6 @@
   color: #fff;
 }
 
-/* 콘텐츠 */
 .calendar-content {
   display: flex;
   flex-direction: column;
@@ -51,7 +46,7 @@
   background: #ffffff;
   border-radius: 24px;
   padding: 28px;
-  box-shadow: 0 12px 28px rgba(0,0,0,0.05);
+  min-height: 420px;
 }
 
 .calendar-top {
@@ -63,20 +58,43 @@
 .calendar-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.calendar-table th {
+  height: 44px;
+  color: #64748b;
 }
 
 .calendar-table td {
+  height: 56px;
   text-align: center;
-  padding: 12px;
+  border-top: 1px solid #eef2f7;
+  position: relative;
+}
+
+.calendar-table .muted {
+  color: #cbd5e1;
 }
 
 .calendar-table .today {
-  background: #2563eb;
   color: #fff;
-  border-radius: 50%;
 }
 
-/* 하단 */
+.calendar-table .today::before {
+  content: "";
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  background: #2563eb;
+  border-radius: 50%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: -1;
+}
+
+/* 일정 */
 .schedule-card {
   background: #ffffff;
   border-radius: 24px;
@@ -88,7 +106,65 @@
   grid-template-columns: 1fr 1fr;
 }
 
-/* 채팅 버튼 */
+.my-list {
+  list-style: none;
+  padding: 0;
+}
+
+.my-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+/* 버튼 */
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-btn,
+.delete-btn,
+.save-btn {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.edit-btn {
+  background: #2563eb;
+  color: #fff;
+}
+
+.delete-btn {
+  background: #ef4444;
+  color: #fff;
+}
+
+.save-btn {
+  margin-top: 10px;
+  background: #111827;
+  color: #fff;
+}
+
+.form {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form input,
+.form textarea {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+}
+
+/* 채팅 */
 .chat-btn {
   position: fixed;
   right: 30px;

@@ -17,7 +17,7 @@ function CalendarPage() {
       <main className="calendar-page-body">
         <div className="calendar-shell">
 
-          {/* 사이드 */}
+          {/* 좌측 */}
           <aside className="calendar-sidebar">
             <button
               className={`calendar-side-btn ${!editMode ? "active" : ""}`}
@@ -34,7 +34,7 @@ function CalendarPage() {
             </button>
           </aside>
 
-          {/* 메인 */}
+          {/* 우측 */}
           <section className="calendar-content">
 
             {/* 캘린더 */}
@@ -77,11 +77,38 @@ function CalendarPage() {
                     <td className="today">10</td>
                     <td>11</td>
                   </tr>
+                  <tr>
+                    <td>12</td>
+                    <td>13</td>
+                    <td>14</td>
+                    <td>15</td>
+                    <td>16</td>
+                    <td className="has-schedule">17</td>
+                    <td>18</td>
+                  </tr>
+                  <tr>
+                    <td>19</td>
+                    <td>20</td>
+                    <td>21</td>
+                    <td>22</td>
+                    <td>23</td>
+                    <td>24</td>
+                    <td>25</td>
+                  </tr>
+                  <tr>
+                    <td>26</td>
+                    <td>27</td>
+                    <td>28</td>
+                    <td>29</td>
+                    <td>30</td>
+                    <td className="muted">1</td>
+                    <td className="muted">2</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
 
-            {/* 하단 영역 */}
+            {/* 하단 */}
             {!editMode ? (
               <div className="schedule-card">
                 <h2>상세 일정 목록</h2>
@@ -113,10 +140,14 @@ function CalendarPage() {
                 <ul className="my-list">
                   {schedules.map((s) => (
                     <li key={s.id}>
-                      <span>{s.title}</span>
                       <div>
-                        <button>수정</button>
-                        <button>삭제</button>
+                        <strong>{s.title}</strong>
+                        <span>{s.memo}</span>
+                      </div>
+
+                      <div className="actions">
+                        <button className="edit-btn">수정</button>
+                        <button className="delete-btn">삭제</button>
                       </div>
                     </li>
                   ))}
