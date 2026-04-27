@@ -4,6 +4,7 @@ import App from './App.jsx'
 import { BrowserRouter } from 'react-router-dom'
 
 import './App.css'
+import "./components/css/chat.css";
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>
