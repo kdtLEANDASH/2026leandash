@@ -36,8 +36,12 @@ public class NoticeService {
         return NoticeResponse.from(noticeRepository.save(notice));
     }
 
-    public List<NoticeListResponse> getNotices() {
-        return noticeRepository.findAllByOrderByNoticeIdDesc().stream()
+    public List<NoticeListResponse> getNotices(String keyword) {
+        List<Notice> notices = (keyword == null || keyword.isBlank())
+                ? noticeRepository.findAllByOrderByNoticeIdDesc()
+                : noticeRepository.findByTitleContainingIgnoreCaseOrderByNoticeIdDesc(keyword.trim());
+
+        return notices.stream()
                 .map(NoticeListResponse::from)
                 .toList();
     }
