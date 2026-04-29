@@ -1,0 +1,43 @@
+package com.onlyman.leandash.entity;
+
+public class ChatMessage package com.onlyman.leandash.entity;
+
+import jakarta.persistence.*;
+        import lombok.*;
+        import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "chat_messages")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ChatMessage {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "message_id")
+    private Long messageId;
+
+    // 해당 메시지가 속한 채팅방의 ID
+    @Column(name = "room_id", nullable = false)
+    private Long roomId;
+
+    // 메시지를 발송한 사용자의 ID
+    @Column(name = "sender_id", nullable = false)
+    private Long senderId;
+
+    // 메시지 본문 내용
+    @Column(name = "message", columnDefinition = "TEXT")
+    private String message;
+
+    // 메시지 읽음 여부 상태
+    @Column(name = "is_read", nullable = false)
+    private Boolean isRead = false;
+
+    // 생성 일시 (DB의 DEFAULT CURRENT_TIMESTAMP 활용)
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+}{
+}
