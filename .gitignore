@@ -56,3 +56,6 @@ frontend/yarn-error.log*
 
 # Vite 설정 관련
 frontend/.vite/
+
+#bin 폴더 무시
+bin/

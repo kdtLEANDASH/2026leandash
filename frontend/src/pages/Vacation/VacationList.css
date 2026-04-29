@@ -1,0 +1,138 @@
+.vacation-list-page {
+  min-height: 100vh;
+  background: #eef2f7;
+}
+
+.vacation-list-body {
+  padding-top: 116px;
+  padding-bottom: 40px;
+}
+
+.vacation-list-layout {
+  width: min(1280px, calc(100% - 48px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 24px;
+}
+
+/* 사이드 */
+.vacation-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vacation-side-btn {
+  height: 70px;
+  border-radius: 20px;
+  border: 1px solid #d9e2ee;
+  background: #ffffff;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.vacation-side-btn.active {
+  background: linear-gradient(135deg, #2563eb, #2f6df6);
+  color: #fff;
+  border: none;
+}
+
+/* 카드 */
+.vacation-list-card {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 30px;
+  border: 1px solid #d9e2ee;
+}
+
+.vacation-list-title {
+  font-size: 28px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.vacation-list-desc {
+  text-align: center;
+  color: #64748b;
+  margin: 10px 0 30px;
+}
+
+/* 테이블 */
+.vacation-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vacation-table-header,
+.vacation-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr 1fr;
+  padding: 14px 16px;
+  border-radius: 14px;
+  align-items: center;
+}
+
+.vacation-table-header {
+  background: #f1f5f9;
+  font-weight: 800;
+}
+
+.vacation-row {
+  background: #f8fafc;
+}
+
+/* 상태 */
+.status {
+  font-weight: 800;
+}
+
+.status.승인 {
+  color: #16a34a;
+}
+
+.status.대기 {
+  color: #f59e0b;
+}
+
+.status.반려 {
+  color: #ef4444;
+}
+
+/* 버튼 */
+.row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.row-actions button {
+  border: none;
+  background: #e2e8f0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.row-actions .danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* 하단 */
+.vacation-bottom-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.chat-btn {
+  height: 52px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 800;
+}

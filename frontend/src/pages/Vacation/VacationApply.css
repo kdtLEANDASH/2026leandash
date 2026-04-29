@@ -1,0 +1,255 @@
+.vacation-apply-page {
+  min-height: 100vh;
+  background: #eef2f7;
+}
+
+.vacation-apply-body {
+  padding-top: 116px;
+  padding-bottom: 40px;
+}
+
+.vacation-apply-layout {
+  width: min(1280px, calc(100% - 48px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.vacation-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vacation-side-btn {
+  width: 100%;
+  min-height: 78px;
+  border: 1px solid #d9e2ee;
+  background: #ffffff;
+  border-radius: 22px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  transition: all 0.2s ease;
+}
+
+.vacation-side-btn:hover {
+  transform: translateY(-1px);
+  background: #f8fbff;
+}
+
+.vacation-side-btn.active {
+  background: linear-gradient(135deg, #2563eb, #2f6df6);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.vacation-apply-content {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.vacation-apply-card {
+  background: #ffffff;
+  border: 1px solid #d9e2ee;
+  border-radius: 28px;
+  padding: 30px 34px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.vacation-apply-title {
+  text-align: center;
+  font-size: 30px;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 28px;
+}
+
+.vacation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.vacation-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-group.full {
+  width: 100%;
+}
+
+.form-group label {
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  border: 1px solid #d9e2ee;
+  border-radius: 16px;
+  background: #f8fafc;
+  padding: 14px 16px;
+  font-size: 16px;
+  color: #334155;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: #93c5fd;
+  background: #ffffff;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+  font-family: inherit;
+}
+
+.vacation-calendar-box {
+  border: 1px solid #d9e2ee;
+  border-radius: 24px;
+  background: #f8fbff;
+  padding: 24px;
+}
+
+.calendar-box-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.calendar-box-desc {
+  font-size: 16px;
+  color: #64748b;
+  margin-bottom: 18px;
+}
+
+.calendar-box-placeholder {
+  min-height: 220px;
+  border: 2px dashed #cfd9e6;
+  border-radius: 18px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  padding: 20px;
+}
+
+.vacation-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.vacation-action-btn {
+  min-width: 120px;
+  height: 52px;
+  border: 1px solid #d9e2ee;
+  border-radius: 14px;
+  background: #f1f5f9;
+  color: #111827;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vacation-action-btn:hover {
+  transform: translateY(-1px);
+}
+
+.vacation-action-btn.primary {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 10px 18px rgba(37, 99, 235, 0.18);
+}
+
+.vacation-bottom-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.chat-btn {
+  min-width: 100px;
+  height: 52px;
+  border: none;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+}
+
+@media (max-width: 1100px) {
+  .vacation-apply-layout {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .vacation-apply-body {
+    padding-top: 108px;
+  }
+
+  .vacation-apply-layout {
+    width: calc(100% - 24px);
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .vacation-sidebar {
+    flex-direction: column;
+  }
+
+  .vacation-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vacation-apply-card {
+    padding: 22px 18px;
+  }
+
+  .vacation-apply-title {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+
+  .vacation-form-actions {
+    flex-direction: column;
+  }
+
+  .vacation-action-btn,
+  .chat-btn {
+    width: 100%;
+  }
+}
