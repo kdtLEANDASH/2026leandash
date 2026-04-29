@@ -59,6 +59,7 @@ public class UserService {
         return UserResponse.from(savedUser);
     }
 
+    @Transactional
     public UserLoginResponse login(UserLoginRequest request) {
         User user = userRepository.findByEmployeeNo(request.getEmployeeNo())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사번입니다."));
@@ -67,6 +68,7 @@ public class UserService {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
 
+        user.updateUserStatus(UserStatus.ONLINE);
         UserPrincipal principal = UserPrincipal.from(user);
 
         return UserLoginResponse.builder()
@@ -80,6 +82,12 @@ public class UserService {
                 .tokenType("Bearer")
                 .message("로그인 성공")
                 .build();
+    }
+
+    @Transactional
+    public void logout(Long currentUserId) {
+        User user = getUserEntity(currentUserId);
+        user.updateUserStatus(UserStatus.OFFLINE);
     }
 
     public List<UserResponse> getUsers() {

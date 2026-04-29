@@ -8,4 +8,6 @@ import java.util.List;
 public interface NoticeRepository extends JpaRepository<Notice, Long> {
 
     List<Notice> findAllByOrderByNoticeIdDesc();
+
+    List<Notice> findByTitleContainingIgnoreCaseOrderByNoticeIdDesc(String keyword);
 }
