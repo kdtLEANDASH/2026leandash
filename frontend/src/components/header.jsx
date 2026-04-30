@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 
 function Header() {
   const [scrolled, setScrolled] = useState(false);
+  const [isLogin, setIsLogin] = useState(false);
+
   const navigate = useNavigate();
   const logoUrl = new URL("../assets/Logo.png", import.meta.url).href;
 
@@ -15,6 +17,12 @@ function Header() {
     onScroll();
 
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // 로그인 상태 체크
+  useEffect(() => {
+    const loginData = localStorage.getItem("loginMember");
+    setIsLogin(!!loginData);
   }, []);
 
   return (
@@ -36,11 +44,36 @@ function Header() {
           <Link to="/notice" className="nav-link">문의/공지사항</Link>
         </nav>
 
-        {/* 로그인 */}
+        {/* 로그인 / 내정보 */}
         <div className="hero-icons">
-          <button type="button" onClick={() => navigate("/login")}>
-            로그인
-          </button>
+          {isLogin ? (
+            <>
+              <button
+                type="button"
+                onClick={() => navigate("/mypage")}
+              >
+                내 정보
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.removeItem("loginMember");
+                  setIsLogin(false);
+                  navigate("/");
+                }}
+              >
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate("/login")}
+            >
+              로그인
+            </button>
+          )}
         </div>
 
       </div>

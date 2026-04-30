@@ -1,0 +1,172 @@
+.calendar-page {
+  background: #f5f7fb;
+  min-height: 100vh;
+}
+
+.calendar-page-body {
+  padding-top: 120px;
+}
+
+.calendar-shell {
+  width: min(1200px, calc(100% - 48px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 28px;
+}
+
+.calendar-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.calendar-side-btn {
+  height: 64px;
+  border-radius: 18px;
+  border: 1px solid #dbe3ef;
+  background: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.calendar-side-btn.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+.calendar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 캘린더 */
+.calendar-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 28px;
+  min-height: 420px;
+}
+
+.calendar-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.calendar-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.calendar-table th {
+  height: 44px;
+  color: #64748b;
+}
+
+.calendar-table td {
+  height: 56px;
+  text-align: center;
+  border-top: 1px solid #eef2f7;
+  position: relative;
+}
+
+.calendar-table .muted {
+  color: #cbd5e1;
+}
+
+.calendar-table .today {
+  color: #fff;
+}
+
+.calendar-table .today::before {
+  content: "";
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  background: #2563eb;
+  border-radius: 50%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: -1;
+}
+
+/* 일정 */
+.schedule-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 28px;
+}
+
+.schedule-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.my-list {
+  list-style: none;
+  padding: 0;
+}
+
+.my-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+/* 버튼 */
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-btn,
+.delete-btn,
+.save-btn {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.edit-btn {
+  background: #2563eb;
+  color: #fff;
+}
+
+.delete-btn {
+  background: #ef4444;
+  color: #fff;
+}
+
+.save-btn {
+  margin-top: 10px;
+  background: #111827;
+  color: #fff;
+}
+
+.form {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form input,
+.form textarea {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+}
+
+/* 채팅 */
+.chat-btn {
+  position: fixed;
+  right: 30px;
+  bottom: 30px;
+}
