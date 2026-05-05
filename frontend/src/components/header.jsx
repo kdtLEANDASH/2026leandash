@@ -41,7 +41,7 @@ function Header() {
           <Link to="/approval" className="nav-link">결재신청</Link>
           <Link to="/calendar" className="nav-link">캘린더</Link>
           <Link to="/search" className="nav-link">통합검색</Link>
-          <Link to="/notice" className="nav-link">문의/공지사항</Link>
+          <Link to="/support" className="nav-link">문의/공지사항</Link>
         </nav>
 
         {/* 로그인 / 내정보 */}
