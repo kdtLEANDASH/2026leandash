@@ -9,17 +9,20 @@ import java.util.List;
 
 public interface VacationRepository extends JpaRepository<Vacation, Long> {
 
+    List<Vacation> findByUserId(Long userId);
+
     List<Vacation> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     List<Vacation> findByStatus(VacationStatus status);
 
-    List<Vacation> findByUserIdAndStatus(Long userId, VacationStatus status);
-
-    boolean existsByUserIdAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
-            Long userId, LocalDate endDate, LocalDate startDate
+    long countByStartDateLessThanEqualAndEndDateGreaterThanEqual(
+            LocalDate endDate,
+            LocalDate startDate
     );
 
-    long countByStartDateLessThanEqualAndEndDateGreaterThanEqual(
-            LocalDate endDate, LocalDate startDate
+    List<Vacation> findByStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+            VacationStatus status,
+            LocalDate endDate,
+            LocalDate startDate
     );
 }
