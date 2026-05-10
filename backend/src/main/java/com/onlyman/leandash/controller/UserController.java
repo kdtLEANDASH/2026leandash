@@ -1,6 +1,7 @@
 package com.onlyman.leandash.controller;
 
 import com.onlyman.leandash.config.UserPrincipal;
+import com.onlyman.leandash.dto.ApiResponse;
 import com.onlyman.leandash.dto.UserCreateRequest;
 import com.onlyman.leandash.dto.UserLoginRequest;
 import com.onlyman.leandash.dto.UserLoginResponse;
@@ -37,6 +38,13 @@ public class UserController {
     public ResponseEntity<UserLoginResponse> login(@Valid @RequestBody UserLoginRequest request) {
         UserLoginResponse response = userService.login(request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/logout")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> logout(@AuthenticationPrincipal UserPrincipal principal) {
+        userService.logout(principal.getUserId());
+        return ResponseEntity.ok(new ApiResponse<>(true, "logout successful", null));
     }
 
     @GetMapping

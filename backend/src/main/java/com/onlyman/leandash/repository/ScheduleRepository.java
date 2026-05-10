@@ -16,4 +16,11 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
             LocalDateTime startDatetime,
             LocalDateTime endDatetime
     );
+
+    List<Schedule> findByUserIdAndScheduleType(Long userId, String scheduleType);
+
+    List<Schedule> findTop5ByTitleContainingIgnoreCaseOrContentContainingIgnoreCaseOrderByScheduleIdDesc(
+            String titleKeyword,
+            String contentKeyword
+    );
 }
