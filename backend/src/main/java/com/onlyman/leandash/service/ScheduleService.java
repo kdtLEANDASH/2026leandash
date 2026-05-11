@@ -21,8 +21,15 @@ public class ScheduleService {
         this.scheduleRepository = scheduleRepository;
     }
 
-    public ScheduleResponseDto createSchedule(Long currentUserId, ScheduleRequestDto requestDto) {
+    public ScheduleResponseDto createSchedule(Long currentUserId, String currentUserRole, ScheduleRequestDto requestDto) {
         validateScheduleRequest(requestDto);
+
+        String scheduleType =
+                requestDto.getScheduleType() == null || requestDto.getScheduleType().isBlank()
+                        ? "PERSONAL"
+                        : requestDto.getScheduleType();
+
+        validateCompanySchedulePermission(currentUserRole, scheduleType);
 
         Schedule schedule = new Schedule();
         schedule.setUserId(currentUserId);
@@ -30,11 +37,7 @@ public class ScheduleService {
         schedule.setContent(requestDto.getContent());
         schedule.setStartDatetime(requestDto.getStartDatetime());
         schedule.setEndDatetime(requestDto.getEndDatetime());
-        schedule.setScheduleType(
-                requestDto.getScheduleType() == null || requestDto.getScheduleType().isBlank()
-                        ? "PERSONAL"
-                        : requestDto.getScheduleType()
-        );
+        schedule.setScheduleType(scheduleType);
         schedule.setIsAllDay(requestDto.getIsAllDay() == null ? 0 : requestDto.getIsAllDay());
 
         Schedule savedSchedule = scheduleRepository.save(schedule);
@@ -78,15 +81,18 @@ public class ScheduleService {
         Schedule schedule = findSchedule(scheduleId);
         validateScheduleAccess(currentUserId, currentUserRole, schedule);
 
+        String scheduleType =
+                requestDto.getScheduleType() == null || requestDto.getScheduleType().isBlank()
+                        ? "PERSONAL"
+                        : requestDto.getScheduleType();
+
+        validateCompanySchedulePermission(currentUserRole, scheduleType);
+
         schedule.setTitle(requestDto.getTitle());
         schedule.setContent(requestDto.getContent());
         schedule.setStartDatetime(requestDto.getStartDatetime());
         schedule.setEndDatetime(requestDto.getEndDatetime());
-        schedule.setScheduleType(
-                requestDto.getScheduleType() == null || requestDto.getScheduleType().isBlank()
-                        ? "PERSONAL"
-                        : requestDto.getScheduleType()
-        );
+        schedule.setScheduleType(scheduleType);
         schedule.setIsAllDay(requestDto.getIsAllDay() == null ? 0 : requestDto.getIsAllDay());
 
         return toResponseDto(schedule);
@@ -109,6 +115,13 @@ public class ScheduleService {
 
         if (requestDto.getStartDatetime().isAfter(requestDto.getEndDatetime())) {
             throw new IllegalArgumentException("start time cannot be after end time");
+        }
+    }
+
+    private void validateCompanySchedulePermission(String currentUserRole, String scheduleType) {
+        if ("COMPANY".equalsIgnoreCase(scheduleType)
+                && !Role.ADMIN.name().equals(currentUserRole)) {
+            throw new IllegalArgumentException("회사 일정은 관리자만 등록 또는 수정할 수 있습니다.");
         }
     }
 
