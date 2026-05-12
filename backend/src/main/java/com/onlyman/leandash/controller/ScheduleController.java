@@ -24,7 +24,11 @@ public class ScheduleController {
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody ScheduleRequestDto requestDto
     ) {
-        return scheduleService.createSchedule(principal.getUserId(), requestDto);
+        return scheduleService.createSchedule(
+                principal.getUserId(),
+                principal.getRole().name(),
+                requestDto
+        );
     }
 
     @GetMapping
