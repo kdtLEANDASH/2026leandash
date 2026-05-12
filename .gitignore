@@ -59,3 +59,28 @@ frontend/.vite/
 
 #bin 폴더 무시
 bin/
+
+# ESLint / Stylelint 캐시 파일
+frontend/.eslintcache
+frontend/.stylelintcache
+
+# TypeScript 빌드 캐시 (TS 쓸 경우 은근 자주 생김)
+frontend/*.tsbuildinfo
+
+# 테스트 커버리지 결과물
+frontend/coverage/
+
+# Mac 사용자 빌드 찌꺼기 (혹시 모를)
+frontend/.DS_Store
+
+
+# 로컬 DB 파일 (H2 파일 모드 쓸 경우 깃허브에 올라가는 거 방지)
+backend/*.h2.db
+backend/*.mv.db
+backend/*.trace.db
+
+# 운영/보안용 yml (local 외에도 secret이나 prod 이름 들어간 건 다 막아버리기)
+backend/src/main/resources/*-secret.yaml
+backend/src/main/resources/*-secret.yml
+backend/src/main/resources/*-prod.yaml
+backend/src/main/resources/*-prod.yml

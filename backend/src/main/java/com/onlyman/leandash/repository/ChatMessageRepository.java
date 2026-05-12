@@ -7,7 +7,6 @@ import java.util.List;
 
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
-
-    // 특정 채팅방의 모든 메시지를 생성 시간 순(과거 -> 최신)으로 조회하는 메서드
-    List<ChatMessage> findByRoomIdOrderByCreatedAtAsc(Long roomId);
+    // 특정 방의 메시지만 시간순으로 긁어오기
+    List<ChatMessage> findByChatRoomIdOrderByCreatedAtAsc(Long roomId);
 }

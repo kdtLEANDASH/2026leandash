@@ -2,13 +2,16 @@ package com.onlyman.leandash.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "chat_messages")
+@Table(name = "chat_messages") //복수형 테이블명 맵핑
+@EntityListeners(AuditingEntityListener.class) //시간 자동 저장
 @Getter
-@Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
 public class ChatMessage {
@@ -16,25 +19,25 @@ public class ChatMessage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "message_id")
-    private Long messageId;
+    private Long id;
 
-    // 해당 메시지가 속한 채팅방의 식별자
-    @Column(name = "room_id", nullable = false)
-    private Long roomId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "room_id", nullable = false)
+    private ChatRoom chatRoom;
 
-    // 메시지를 발송한 사용자의 식별자
     @Column(name = "sender_id", nullable = false)
     private Long senderId;
 
-    // 메시지 본문 내용 (긴 텍스트 처리를 위해 TEXT 타입 지정)
-    @Column(name = "message", columnDefinition = "TEXT")
+
+
+    @Column(columnDefinition = "TEXT")
     private String message;
 
-    // 메시지 읽음 여부 (기본값 false)
+    @Builder.Default
     @Column(name = "is_read", nullable = false)
     private Boolean isRead = false;
 
-    // 메시지 생성 일시 (DB 설정에 따라 자동 생성)
-    @Column(name = "created_at", insertable = false, updatable = false)
+    @CreatedDate
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 }
