@@ -18,6 +18,7 @@ import { Badge } from "../../components/UI/badge";
 import { Button } from "../../components/UI/button";
 import { Calendar as CalendarComp } from "../../components/UI/calendar";
 import { useAppContext } from "../../store/AppProvider";
+import { cn } from "../../components/UI/utils";
 
 export function DashboardPage() {
   const {
@@ -27,7 +28,24 @@ export function DashboardPage() {
     currentUser,
     vacationRequests = [],
     employees = [],
+    customSettings,
   } = useAppContext() || {};
+
+  const isDark = customSettings?.darkMode;
+
+  const cardClass = isDark
+    ? "!bg-zinc-700 !border-zinc-600 !text-zinc-100"
+    : "";
+
+  const innerCardClass = isDark
+    ? "!bg-zinc-600 !border-zinc-500 !text-zinc-100"
+    : "bg-white border-gray-200";
+
+  const textMain = isDark ? "text-zinc-100" : "text-gray-900";
+  const textSub = isDark ? "text-zinc-300" : "text-gray-600";
+  const textMuted = isDark ? "text-zinc-400" : "text-gray-500";
+
+  const hoverClass = isDark ? "hover:!bg-zinc-500" : "hover:bg-gray-50";
 
   const [selectedDate, setSelectedDate] = useState(new Date());
 
@@ -176,6 +194,7 @@ export function DashboardPage() {
               {formattedDate} ({dayOfWeek}요일)
             </p>
           </div>
+
           <div className="text-right">
             <div className="text-sm text-blue-100 mb-1">오늘의 일정</div>
             <div className="text-4xl font-bold">{todayEvents.length}</div>
@@ -184,18 +203,19 @@ export function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <Card className={cardClass}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">잔여 휴가</p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">
+                <p className={cn("text-sm font-medium", textSub)}>잔여 휴가</p>
+                <p className={cn("text-2xl font-bold mt-2", textMain)}>
                   {vacationBalance.remaining}일
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className={cn("text-xs mt-1", textMuted)}>
                   총 {vacationBalance.total}일 중 {vacationBalance.used}일 사용
                 </p>
               </div>
+
               <div className="size-12 bg-blue-100 rounded-lg flex items-center justify-center">
                 <Calendar className="size-6 text-blue-600" />
               </div>
@@ -203,16 +223,17 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={cardClass}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">오늘 일정</p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">
+                <p className={cn("text-sm font-medium", textSub)}>오늘 일정</p>
+                <p className={cn("text-2xl font-bold mt-2", textMain)}>
                   {todayEvents.length}개
                 </p>
-                <p className="text-xs text-gray-500 mt-1">예정된 일정</p>
+                <p className={cn("text-xs mt-1", textMuted)}>예정된 일정</p>
               </div>
+
               <div className="size-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <Clock className="size-6 text-green-600" />
               </div>
@@ -220,16 +241,19 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={cardClass}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">미확인 공지</p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">
+                <p className={cn("text-sm font-medium", textSub)}>
+                  미확인 공지
+                </p>
+                <p className={cn("text-2xl font-bold mt-2", textMain)}>
                   {recentNotices.length}개
                 </p>
-                <p className="text-xs text-gray-500 mt-1">새로운 공지사항</p>
+                <p className={cn("text-xs mt-1", textMuted)}>새로운 공지사항</p>
               </div>
+
               <div className="size-12 bg-orange-100 rounded-lg flex items-center justify-center">
                 <Bell className="size-6 text-orange-600" />
               </div>
@@ -237,20 +261,21 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={cardClass}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className={cn("text-sm font-medium", textSub)}>
                   활동 중인 직원
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">
+                <p className={cn("text-2xl font-bold mt-2", textMain)}>
                   {activeEmployees}명
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className={cn("text-xs mt-1", textMuted)}>
                   전체 {employees.length}명
                 </p>
               </div>
+
               <div className="size-12 bg-purple-100 rounded-lg flex items-center justify-center">
                 <Users className="size-6 text-purple-600" />
               </div>
@@ -260,29 +285,34 @@ export function DashboardPage() {
       </div>
 
       {isManager && pendingVacations.length > 0 && (
-        <Card className="border-l-4 border-l-orange-500">
+        <Card className={cn("border-l-4 border-l-orange-500", cardClass)}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-orange-700">
+            <CardTitle className="flex items-center gap-2 text-orange-400">
               <Bell className="size-5" />
               승인 대기 중인 휴가 신청 ({pendingVacations.length}건)
             </CardTitle>
           </CardHeader>
+
           <CardContent>
             <div className="space-y-2">
               {pendingVacations.slice(0, 3).map((vacation) => (
                 <div
                   key={vacation.id}
-                  className="flex items-center justify-between p-3 bg-orange-50 rounded-lg"
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-lg",
+                    isDark ? "bg-zinc-600" : "bg-orange-50"
+                  )}
                 >
                   <div>
-                    <div className="font-medium text-gray-900">
+                    <div className={cn("font-medium", textMain)}>
                       {vacation.employeeName}
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className={cn("text-sm", textSub)}>
                       {vacation.startDate} ~ {vacation.endDate} ({vacation.days}
                       일)
                     </div>
                   </div>
+
                   <Link to="/vacation">
                     <Button size="sm" variant="outline">
                       확인하기
@@ -296,17 +326,18 @@ export function DashboardPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 lg:row-span-2">
+        <Card className={cn("lg:col-span-2 lg:row-span-2", cardClass)}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className={cn("flex items-center gap-2", textMain)}>
                 <Calendar className="size-5" />
                 캘린더
-                <span className="text-sm font-normal text-gray-500">
+                <span className={cn("text-sm font-normal", textMuted)}>
                   {selectedDate &&
                     `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일`}
                 </span>
               </CardTitle>
+
               <Link to="/calendar">
                 <Button variant="ghost" size="sm">
                   전체 보기
@@ -322,7 +353,10 @@ export function DashboardPage() {
                   mode="single"
                   selected={selectedDate}
                   onSelect={setSelectedDate}
-                  className="rounded-md border text-base"
+                  className={cn(
+                    "rounded-md border text-base",
+                    isDark ? "bg-zinc-700 border-zinc-500 text-zinc-100" : ""
+                  )}
                   classNames={{
                     months:
                       "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
@@ -334,8 +368,10 @@ export function DashboardPage() {
                       "h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100",
                     table: "w-full border-collapse space-y-1",
                     head_row: "flex",
-                    head_cell:
-                      "text-gray-500 rounded-md w-10 font-normal text-sm",
+                    head_cell: cn(
+                      "rounded-md w-10 font-normal text-sm",
+                      isDark ? "text-zinc-300" : "text-gray-500"
+                    ),
                     row: "flex w-full mt-2",
                     cell: "h-10 w-10 text-center text-sm p-0 relative",
                     day: "h-10 w-10 p-0 font-normal",
@@ -354,7 +390,7 @@ export function DashboardPage() {
               </div>
 
               <div className="space-y-3">
-                <h3 className="font-semibold text-gray-900">
+                <h3 className={cn("font-semibold", textMain)}>
                   {selectedDate
                     ? `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 일정`
                     : "날짜를 선택하세요"}
@@ -365,21 +401,26 @@ export function DashboardPage() {
                     {selectedDateEvents.map((event) => (
                       <div
                         key={event.id}
-                        className="p-3 bg-white border border-gray-200 rounded-lg"
+                        className={cn(
+                          "p-3 border rounded-lg",
+                          innerCardClass
+                        )}
                       >
                         <div className="flex items-start justify-between gap-2 mb-1">
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className={cn("text-sm font-medium", textMain)}>
                             {event.title}
                           </span>
                           {getEventTypeBadge(event.type)}
                         </div>
+
                         {event.startTime && event.endTime && (
-                          <div className="text-xs text-gray-600">
+                          <div className={cn("text-xs", textSub)}>
                             {event.startTime} - {event.endTime}
                           </div>
                         )}
+
                         {event.description && (
-                          <div className="text-xs text-gray-600 mt-1">
+                          <div className={cn("text-xs mt-1", textSub)}>
                             {event.description}
                           </div>
                         )}
@@ -387,7 +428,7 @@ export function DashboardPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className={cn("text-center py-8", textMuted)}>
                     <Calendar className="size-8 mx-auto mb-2 text-gray-400" />
                     <p className="text-sm">일정이 없습니다</p>
                   </div>
@@ -397,13 +438,14 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={cardClass}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className={cn("flex items-center gap-2", textMain)}>
                 <FileText className="size-5" />
                 사내 공지
               </CardTitle>
+
               <Link to="/notice">
                 <Button variant="ghost" size="sm">
                   더보기
@@ -416,18 +458,31 @@ export function DashboardPage() {
             <div className="space-y-3">
               {recentNotices.slice(0, 3).map((notice) => (
                 <Link key={notice.id} to="/notice">
-                  <div className="p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border border-gray-100">
+                  <div
+                    className={cn(
+                      "p-3 rounded-lg transition-colors cursor-pointer border",
+                      innerCardClass,
+                      hoverClass
+                    )}
+                  >
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <span className="font-medium text-gray-900 text-sm line-clamp-1">
+                      <span
+                        className={cn(
+                          "font-medium text-sm line-clamp-1",
+                          textMain
+                        )}
+                      >
                         {notice.title}
                       </span>
+
                       {notice.isPinned && (
                         <Badge className="bg-red-100 text-red-700 hover:bg-red-100 text-xs">
                           중요
                         </Badge>
                       )}
                     </div>
-                    <div className="text-xs text-gray-500">
+
+                    <div className={cn("text-xs", textMuted)}>
                       {typeof notice.author === "object"
                         ? notice.author?.name
                         : notice.author}{" "}
@@ -440,10 +495,10 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={cardClass}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className={cn("flex items-center gap-2", textMain)}>
                 <Clock className="size-5" />
                 금일 일정
               </CardTitle>
@@ -456,23 +511,29 @@ export function DashboardPage() {
                 {todayEvents.slice(0, 3).map((event) => (
                   <div
                     key={event.id}
-                    className="p-3 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
+                    className={cn(
+                      "p-3 border rounded-lg transition-shadow",
+                      innerCardClass
+                    )}
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-xs">
                         {event.type}
                       </Badge>
+
                       {event.startTime && event.endTime && (
-                        <span className="text-xs text-gray-600">
+                        <span className={cn("text-xs", textSub)}>
                           {event.startTime} - {event.endTime}
                         </span>
                       )}
                     </div>
-                    <div className="font-medium text-gray-900 text-sm mb-1">
+
+                    <div className={cn("font-medium text-sm mb-1", textMain)}>
                       {event.title}
                     </div>
+
                     {event.description && (
-                      <div className="text-xs text-gray-600 line-clamp-1">
+                      <div className={cn("text-xs line-clamp-1", textSub)}>
                         {event.description}
                       </div>
                     )}
@@ -482,7 +543,7 @@ export function DashboardPage() {
             ) : (
               <div className="text-center py-8">
                 <Clock className="size-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">
+                <p className={cn("text-sm", textMuted)}>
                   오늘 예정된 일정이 없습니다
                 </p>
               </div>
@@ -491,32 +552,41 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card className={cardClass}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className={cn("flex items-center gap-2", textMain)}>
             <TrendingUp className="size-5" />
             다가오는 일정 (7일 이내)
           </CardTitle>
         </CardHeader>
+
         <CardContent>
           {upcomingEvents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {upcomingEvents.map((event) => (
                 <div
                   key={event.id}
-                  className="p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
+                  className={cn(
+                    "p-4 border rounded-lg transition-shadow",
+                    innerCardClass
+                  )}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
                       {event.type}
                     </Badge>
-                    <span className="text-xs text-gray-500">{event.date}</span>
+
+                    <span className={cn("text-xs", textMuted)}>
+                      {event.date}
+                    </span>
                   </div>
-                  <div className="font-medium text-gray-900 mb-1">
+
+                  <div className={cn("font-medium mb-1", textMain)}>
                     {event.title}
                   </div>
+
                   {event.startTime && event.endTime && (
-                    <div className="text-sm text-gray-600">
+                    <div className={cn("text-sm", textSub)}>
                       {event.startTime} - {event.endTime}
                     </div>
                   )}
@@ -525,7 +595,7 @@ export function DashboardPage() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-500">다가오는 일정이 없습니다</p>
+              <p className={textMuted}>다가오는 일정이 없습니다</p>
             </div>
           )}
         </CardContent>
