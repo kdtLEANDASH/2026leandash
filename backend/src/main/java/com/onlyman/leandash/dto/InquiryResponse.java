@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @AllArgsConstructor
@@ -22,10 +23,11 @@ public class InquiryResponse {
     private Long answeredBy;
     private String answeredByName;
     private LocalDateTime answeredAt;
+    private List<FileAttachmentResponse> attachments;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public static InquiryResponse from(Inquiry inquiry) {
+    public static InquiryResponse from(Inquiry inquiry, List<FileAttachmentResponse> attachments) {
         return new InquiryResponse(
                 inquiry.getInquiryId(),
                 inquiry.getUser().getUserId(),
@@ -39,6 +41,7 @@ public class InquiryResponse {
                 inquiry.getAnsweredBy() != null ? inquiry.getAnsweredBy().getUserId() : null,
                 inquiry.getAnsweredBy() != null ? inquiry.getAnsweredBy().getUserName() : null,
                 inquiry.getAnsweredAt(),
+                attachments,
                 inquiry.getCreatedAt(),
                 inquiry.getUpdatedAt()
         );
