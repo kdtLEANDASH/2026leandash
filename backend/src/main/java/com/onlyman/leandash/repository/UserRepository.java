@@ -24,6 +24,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmployeeNo(String employeeNo);
 
+    Optional<User> findFirstByRoleOrderByUserIdAsc(String role);
+
     List<User> findAllByDepartment_DepartmentIdOrderByUserIdAsc(Long departmentId);
 
     @Query("""
