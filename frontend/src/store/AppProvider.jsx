@@ -1,5 +1,28 @@
 import { createContext, useContext, useState, useEffect } from "react";
 export const AppContext = createContext(undefined);
+const SETTINGS_KEY = "leandash_custom_settings";
+
+const defaultCustomSettings = {
+  darkMode: false,
+  notificationEnabled: true,
+  headerSize: "default",
+  headerDisplayMode: "iconText",
+  hiddenHeaderItems: [],
+  headerOrder: [
+    "/dashboard",
+    "/notice",
+    "/inquiry",
+    "/employees",
+    "/documents",
+    "/vacation",
+    "/calendar",
+    "/community",
+    "/approval-request",
+    "/evaluation",
+    "/approval",
+    "/registration-approval",
+  ],
+};
 const initialEmployees = [
     {
         id: 0,
@@ -396,6 +419,32 @@ const initialVacationRequests = [
         employeeName: "홍길동",
     },
 ];
+
+const initialDocuments = [
+  {
+    id: 1,
+    title: "2026년 사내 보안 가이드",
+    department: "인사팀",
+    fileName: "security-guide.pdf",
+    fileSize: "1.2 MB",
+    uploader: "박철수",
+    uploadDate: "2026-05-01",
+    description: "전 직원 대상 사내 보안 가이드 문서입니다.",
+    fileUrl: null,
+  },
+  {
+    id: 2,
+    title: "개발팀 API 명세 초안",
+    department: "개발팀",
+    fileName: "api-spec.docx",
+    fileSize: "856 KB",
+    uploader: "홍길동",
+    uploadDate: "2026-05-01",
+    description: "개발팀 백엔드 API 명세 초안입니다.",
+    fileUrl: null,
+  },
+];
+
 const initialCalendarEvents = [
     {
         id: 1,
@@ -514,410 +563,616 @@ const initialCalendarEvents = [
     },
 ];
 export function AppProvider({ children }) {
-    const [notices, setNotices] = useState(initialNotices.map((notice) => ({
-        ...notice,
-        author: typeof notice.author === "object" ? notice.author?.name || "관리자" : notice.author,
-    })));
-    const [vacationRequests, setVacationRequests] = useState(initialVacationRequests);
-    const [employees, setEmployees] = useState(initialEmployees);
-    const [notifications, setNotifications] = useState([]);
-    const [calendarEvents, setCalendarEvents] = useState(initialCalendarEvents);
-    const [currentUser, setCurrentUser] = useState(null);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [registrationRequests, setRegistrationRequests] = useState([]);
-    // Chat state
-    const [chatRooms, setChatRooms] = useState([
-        {
-            id: 1,
-            name: "김민수",
-            lastMessage: "프로젝트 진행 상황 공유드립니다",
-            timestamp: "5분 전",
-            unread: 2,
-            avatar: "김",
-            online: true,
-            isGroup: false,
-        },
-        {
-            id: 2,
-            name: "개발팀",
-            lastMessage: "저는 괜찮습니다!",
-            timestamp: "30분 전",
-            unread: 0,
-            avatar: "개",
-            online: false,
-            isGroup: true,
-            participants: [1, 2, 3],
-        },
-        {
-            id: 3,
-            name: "이지은",
-            lastMessage: "네, 확인했습니다!",
-            timestamp: "1시간 전",
-            unread: 0,
-            avatar: "이",
-            online: true,
-            isGroup: false,
-        },
-    ]);
-    const [chatMessages, setChatMessages] = useState({
-        1: [
-            {
-                id: 1,
-                sender: "김민수",
-                senderId: 2,
-                content: "안녕하세요! 프로젝트 관련해서 문의드릴 게 있습니다.",
-                timestamp: "오전 10:30",
-                isMe: false,
-            },
-            {
-                id: 2,
-                sender: "홍길동",
-                senderId: 1,
-                content: "네, 말씀하세요!",
-                timestamp: "오전 10:32",
-                isMe: true,
-            },
-            {
-                id: 3,
-                sender: "김민수",
-                senderId: 2,
-                content: "이번 주 금요일까지 완료 가능할까요?",
-                timestamp: "오전 10:33",
-                isMe: false,
-            },
-            {
-                id: 4,
-                sender: "홍길동",
-                senderId: 1,
-                content: "네, 가능합니다. 일정 맞춰서 진행하겠습니다.",
-                timestamp: "오전 10:35",
-                isMe: true,
-            },
-            {
-                id: 5,
-                sender: "김민수",
-                senderId: 2,
-                content: "프로젝트 진행 상황 공유드립니다",
-                timestamp: "오전 11:20",
-                isMe: false,
-            },
-        ],
-        2: [
-            {
-                id: 1,
-                sender: "이지은",
-                senderId: 6,
-                content: "다음 주 회의 일정 조율 부탁드립니다",
-                timestamp: "오전 9:00",
-                isMe: false,
-            },
-            {
-                id: 2,
-                sender: "홍길동",
-                senderId: 1,
-                content: "월요일 오후 2시 어떠세요?",
-                timestamp: "오전 9:15",
-                isMe: true,
-            },
-            {
-                id: 3,
-                sender: "김민수",
-                senderId: 2,
-                content: "저는 괜찮습니다!",
-                timestamp: "오전 9:20",
-                isMe: false,
-            },
-        ],
-        3: [
-            {
-                id: 1,
-                sender: "이지은",
-                senderId: 6,
-                content: "코드 리뷰 부탁드립니다",
-                timestamp: "어제",
-                isMe: false,
-            },
-            {
-                id: 2,
-                sender: "홍길동",
-                senderId: 1,
-                content: "네, 확인하겠습니다",
-                timestamp: "어제",
-                isMe: true,
-            },
-            {
-                id: 3,
-                sender: "이지은",
-                senderId: 6,
-                content: "네, 확인했습니다!",
-                timestamp: "1시간 전",
-                isMe: false,
-            },
-        ],
-    });
-    // employees가 변경될 때 currentUser도 동기화
-    useEffect(() => {
-        if (currentUser) {
-            const updatedUser = employees.find(emp => emp.id === currentUser.id);
-            if (updatedUser) {
-                setCurrentUser(updatedUser);
-            }
-        }
-    }, [employees]);
-    const addNotice = (notice) => {
-        const newNotice = {
-            ...notice,
-            id: Math.max(...notices.map(n => n.id), 0) + 1,
-            views: 0,
-            date: new Date().toISOString().split("T")[0],
-            author: typeof notice.author === "object"
-                ? notice.author?.name || "관리자"
-                : notice.author || "관리자",
+  const [notices, setNotices] = useState(
+    initialNotices.map((notice) => ({
+      ...notice,
+      author:
+        typeof notice.author === "object"
+          ? notice.author?.name || "관리자"
+          : notice.author,
+    }))
+  );
+
+  const [vacationRequests, setVacationRequests] = useState(
+    initialVacationRequests
+  );
+  const [employees, setEmployees] = useState(initialEmployees);
+  const [notifications, setNotifications] = useState([]);
+  const [calendarEvents, setCalendarEvents] = useState(initialCalendarEvents);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [registrationRequests, setRegistrationRequests] = useState([]);
+  const [documents, setDocuments] = useState(initialDocuments);
+  const [customSettings, setCustomSettings] = useState(() => {
+    const saved = localStorage.getItem(SETTINGS_KEY);
+
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+
+        return {
+          ...defaultCustomSettings,
+          ...parsed,
+          hiddenHeaderItems: Array.isArray(parsed.hiddenHeaderItems)
+            ? parsed.hiddenHeaderItems
+            : defaultCustomSettings.hiddenHeaderItems,
+          headerOrder: Array.isArray(parsed.headerOrder)
+            ? parsed.headerOrder
+            : defaultCustomSettings.headerOrder,
         };
-        setNotices([newNotice, ...notices]);
-    };
-    const incrementNoticeViews = (id) => {
-        setNotices(notices.map(notice => notice.id === id ? { ...notice, views: notice.views + 1 } : notice));
-    };
-    const addVacationRequest = (request) => {
-        const newRequest = {
-            ...request,
-            id: Math.max(...vacationRequests.map(r => r.id), 0) + 1,
-            requestDate: new Date().toISOString().split("T")[0],
-            status: "대기",
-            employeeId: currentUser ? currentUser.id : 0,
-            employeeName: currentUser ? currentUser.name : "",
-        };
-        setVacationRequests([newRequest, ...vacationRequests]);
-        // 알림 생성
-        addNotification({
-            type: "vacation",
-            title: "휴가 신청 완료",
-            message: `${request.type} 신청이 제출되었습니다. (${request.startDate} ~ ${request.endDate})`,
-            relatedId: newRequest.id,
-        });
-    };
-    const approveVacation = (id, approver) => {
-        setVacationRequests(vacationRequests.map(req => {
-            if (req.id === id) {
-                // 휴가 승인 시 직원 상태를 "휴가 중"으로 변경
-                const today = new Date().toISOString().split("T")[0];
-                if (req.startDate <= today && req.endDate >= today) {
-                    updateEmployeeStatus(req.employeeId, "휴가 중");
-                }
-                // 캘린더에 휴가 일정 추가
-                addCalendarEvent({
-                    title: `${req.employeeName} - ${req.type}`,
-                    date: req.startDate,
-                    type: "휴가",
-                    description: req.reason,
-                });
-                // 알림 생성
-                addNotification({
-                    type: "vacation",
-                    title: "휴가 승인",
-                    message: `${req.type} 신청이 승인되었습니다. (${req.startDate} ~ ${req.endDate})`,
-                    relatedId: id,
-                });
-                return { ...req, status: "승인", approver };
-            }
-            return req;
-        }));
-    };
-    const rejectVacation = (id, approver) => {
-        const request = vacationRequests.find(r => r.id === id);
-        if (request) {
-            addNotification({
-                type: "vacation",
-                title: "휴가 반려",
-                message: `${request.type} 신청이 반려되었습니다. (${request.startDate} ~ ${request.endDate})`,
-                relatedId: id,
-            });
-        }
-        setVacationRequests(vacationRequests.map(req => req.id === id ? { ...req, status: "반려", approver } : req));
-    };
-    const cancelVacation = (id) => {
-        setVacationRequests(vacationRequests.filter(req => req.id !== id));
-    };
-    const addEmployee = (employee) => {
-        const newEmployee = {
-            ...employee,
-            id: Math.max(...employees.map(e => e.id), 0) + 1,
-        };
-        setEmployees([...employees, newEmployee]);
-    };
-    const updateEmployee = (id, updates) => {
-        setEmployees(employees.map(emp => emp.id === id ? { ...emp, ...updates } : emp));
-    };
-    const deleteEmployee = (id) => {
-        setEmployees(employees.filter(emp => emp.id !== id));
-    };
-    const updateEmployeeStatus = (id, status) => {
-        setEmployees(employees.map(emp => emp.id === id ? { ...emp, status } : emp));
-    };
-    const addNotification = (notification) => {
-        const newNotification = {
-            ...notification,
-            id: Math.max(...notifications.map(n => n.id), 0) + 1,
-            date: new Date().toISOString(),
-            read: false,
-        };
-        setNotifications([newNotification, ...notifications]);
-    };
-    const markNotificationRead = (id) => {
-        setNotifications(notifications.map(notif => notif.id === id ? { ...notif, read: true } : notif));
-    };
-    const addCalendarEvent = (event) => {
-        const newEvent = {
-            ...event,
-            id: Math.max(...calendarEvents.map(e => e.id), 0) + 1,
-        };
-        setCalendarEvents([...calendarEvents, newEvent]);
-    };
-    const updateCalendarEvent = (id, updates) => {
-        setCalendarEvents(calendarEvents.map(event => event.id === id ? { ...event, ...updates } : event));
-    };
-    const deleteCalendarEvent = (id) => {
-        setCalendarEvents(calendarEvents.filter(event => event.id !== id));
-    };
-    const getVacationBalance = (employeeId) => {
-        const total = 15; // 기본 연차
-        const approvedRequests = vacationRequests.filter(req => req.employeeId === employeeId && req.status === "승인");
-        const used = approvedRequests.reduce((sum, req) => sum + req.days, 0);
-        const remaining = total - used;
-        return { total, used, remaining };
-    };
-    const login = (email, password) => {
-        // 데모 버전 - 이메일만 확인
-        const user = employees.find(emp => emp.email === email);
-        if (user) {
-            setCurrentUser(user);
-            setIsAuthenticated(true);
-        }
-        else {
-            alert("등록되지 않은 사용자입니다.");
-        }
-    };
-    const logout = () => {
-        setCurrentUser(null);
-        setIsAuthenticated(false);
-    };
-    const register = (name, email, password, department, position) => {
-        // 회원가입 요청 생성 (최고관리자 승인 필요)
-        const newRequest = {
-            id: Math.max(...registrationRequests.map(r => r.id), 0) + 1,
-            name,
-            email,
-            password,
-            department,
-            position,
-            requestDate: new Date().toISOString().split("T")[0],
-            status: "대기",
-        };
-        setRegistrationRequests([...registrationRequests, newRequest]);
-        alert("회원가입 요청이 전송되었습니다. 관리자 승인 후 로그인이 가능합니다.");
-    };
-    const approveRegistration = (id) => {
-        const request = registrationRequests.find(r => r.id === id);
-        if (!request)
-            return;
-        // 새 직원 추가
-        const newEmployee = {
-            id: Math.max(...employees.map(e => e.id), 0) + 1,
-            name: request.name,
-            email: request.email,
-            password: request.password,
-            department: request.department,
-            position: request.position,
-            phone: "",
-            status: "업무 중",
-            hireDate: new Date().toISOString().split("T")[0],
-            role: "일반직원",
-        };
-        setEmployees([...employees, newEmployee]);
-        // 요청 상태 변경
-        setRegistrationRequests(registrationRequests.map(r => r.id === id ? { ...r, status: "승인" } : r));
-        alert(`${request.name}님의 가입이 승인되었습니다.`);
-    };
-    const rejectRegistration = (id) => {
-        setRegistrationRequests(registrationRequests.map(r => r.id === id ? { ...r, status: "거절" } : r));
-        const request = registrationRequests.find(r => r.id === id);
-        if (request) {
-            alert(`${request.name}님의 가입 요청이 거절되었습니다.`);
-        }
-    };
-    const addChatRoom = (room) => {
-        const newRoom = {
-            ...room,
-            id: Math.max(...chatRooms.map(r => r.id), 0) + 1,
-        };
-        setChatRooms([...chatRooms, newRoom]);
-        return newRoom.id;
-    };
-    const updateChatRoom = (id, updates) => {
-        setChatRooms(chatRooms.map(room => room.id === id ? { ...room, ...updates } : room));
-    };
-    const sendMessage = (roomId, content) => {
-        const newMessage = {
-            id: Math.max(...(chatMessages[roomId]?.map(m => m.id) || []), 0) + 1,
-            sender: currentUser ? currentUser.name : "익명",
-            senderId: currentUser ? currentUser.id : 0,
-            content,
-            timestamp: new Date().toLocaleTimeString("ko-KR", {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-            }),
-            isMe: !!currentUser,
-        };
-        setChatMessages(prev => ({
-            ...prev,
-            [roomId]: [...(prev[roomId] || []), newMessage],
-        }));
-    };
-    return (<AppContext.Provider value={{
-            notices,
-            addNotice,
-            incrementNoticeViews,
-            vacationRequests,
-            addVacationRequest,
-            approveVacation,
-            rejectVacation,
-            cancelVacation,
-            employees,
-            addEmployee,
-            updateEmployee,
-            deleteEmployee,
-            updateEmployeeStatus,
-            notifications,
-            addNotification,
-            markNotificationRead,
-            calendarEvents,
-            addCalendarEvent,
-            updateCalendarEvent,
-            deleteCalendarEvent,
-            currentUser,
-            isAuthenticated,
-            login,
-            logout,
-            register,
-            registrationRequests,
-            approveRegistration,
-            rejectRegistration,
-            getVacationBalance,
-            chatRooms,
-            chatMessages,
-            addChatRoom,
-            updateChatRoom,
-            sendMessage,
-        }}>
-      {children}
-    </AppContext.Provider>);
-}
-export function useAppContext() {
-    const context = useContext(AppContext);
-    if (context === undefined) {
-        throw new Error("useAppContext must be used within an AppProvider");
+      } catch {
+        localStorage.removeItem(SETTINGS_KEY);
+      }
     }
-    return context;
+
+    return defaultCustomSettings;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(customSettings));
+  }, [customSettings]);
+
+  const updateCustomSettings = (updates) => {
+    setCustomSettings((prev) => ({
+      ...prev,
+      ...updates,
+    }));
+  };
+
+  const createInitialChatRooms = () => {
+    const departments = [
+      ...new Set(initialEmployees.map((emp) => emp.department)),
+    ].filter((dept) => dept && dept !== "경영진");
+
+    return departments.map((dept) => {
+      const members = initialEmployees.filter((emp) => emp.department === dept);
+
+      return {
+        id: `group-${dept}`,
+        name: `${dept} 채팅방`,
+        lastMessage: "부서 채팅방입니다.",
+        timestamp: "방금",
+        unread: 0,
+        unreadByUser: {},
+        avatar: dept.charAt(0),
+        online: false,
+        isGroup: true,
+        participants: members.map((emp) => emp.id),
+        };
+    });
+  };
+
+  const [allChatRooms, setAllChatRooms] = useState(createInitialChatRooms);
+  const [allChatMessages, setAllChatMessages] = useState({});
+
+  const getDirectRoomId = (userId1, userId2) => {
+    return `dm-${[userId1, userId2].sort((a, b) => a - b).join("-")}`;
+  };
+
+  const visibleChatRooms = currentUser
+    ? allChatRooms
+        .filter((room) => room.participants?.includes(currentUser.id))
+        .map((room) => {
+          if (room.isGroup) {
+            return {
+                ...room,
+                unread: room.unreadByUser?.[currentUser.id] || 0,
+            };
+         }
+
+          const otherUserId = room.participants.find(
+            (id) => id !== currentUser.id
+          );
+
+          const otherUser = employees.find((emp) => emp.id === otherUserId);
+
+          return {
+            ...room,
+            name: otherUser?.name || room.name,
+            avatar: otherUser?.name?.charAt(0) || "?",
+            online: otherUser?.status === "업무 중",
+            unread: room.unreadByUser?.[currentUser.id] || 0,
+            };
+        })
+    : [];
+
+  const visibleChatMessages = Object.fromEntries(
+    Object.entries(allChatMessages).map(([roomId, messages]) => [
+      roomId,
+      messages.map((message) => ({
+        ...message,
+        isMe: message.senderId === currentUser?.id,
+      })),
+    ])
+  );
+
+  useEffect(() => {
+    const savedLogin = localStorage.getItem("isLogin") === "true";
+    const savedEmail = localStorage.getItem("userEmail");
+
+    if (!savedLogin || !savedEmail) return;
+
+    const savedUser = employees.find(
+      (emp) => emp.email?.toLowerCase() === savedEmail.toLowerCase()
+    );
+
+    if (savedUser) {
+      setCurrentUser(savedUser);
+      setIsAuthenticated(true);
+    }
+  }, [employees]);
+
+  useEffect(() => {
+    if (currentUser) {
+      const updatedUser = employees.find((emp) => emp.id === currentUser.id);
+
+      if (updatedUser) {
+        setCurrentUser(updatedUser);
+      }
+    }
+  }, [employees]);
+
+  const addNotice = (notice) => {
+    const newNotice = {
+      ...notice,
+      id: Math.max(...notices.map((n) => n.id), 0) + 1,
+      views: 0,
+      date: new Date().toISOString().split("T")[0],
+      author:
+        typeof notice.author === "object"
+          ? notice.author?.name || "관리자"
+          : notice.author || "관리자",
+    };
+
+    setNotices([newNotice, ...notices]);
+  };
+
+  const incrementNoticeViews = (id) => {
+    setNotices(
+      notices.map((notice) =>
+        notice.id === id ? { ...notice, views: notice.views + 1 } : notice
+      )
+    );
+  };
+
+  const addVacationRequest = (request) => {
+    const newRequest = {
+      ...request,
+      id: Math.max(...vacationRequests.map((r) => r.id), 0) + 1,
+      requestDate: new Date().toISOString().split("T")[0],
+      status: "대기",
+      employeeId: currentUser ? currentUser.id : 0,
+      employeeName: currentUser ? currentUser.name : "",
+    };
+
+    setVacationRequests([newRequest, ...vacationRequests]);
+
+    addNotification({
+      type: "vacation",
+      title: "휴가 신청 완료",
+      message: `${request.type} 신청이 제출되었습니다. (${request.startDate} ~ ${request.endDate})`,
+      relatedId: newRequest.id,
+    });
+  };
+
+  const approveVacation = (id, approver) => {
+    setVacationRequests(
+      vacationRequests.map((req) => {
+        if (req.id === id) {
+          const today = new Date().toISOString().split("T")[0];
+
+          if (req.startDate <= today && req.endDate >= today) {
+            updateEmployeeStatus(req.employeeId, "휴가 중");
+          }
+
+          addCalendarEvent({
+            title: `${req.employeeName} - ${req.type}`,
+            date: req.startDate,
+            type: "휴가",
+            description: req.reason,
+          });
+
+          addNotification({
+            type: "vacation",
+            title: "휴가 승인",
+            message: `${req.type} 신청이 승인되었습니다. (${req.startDate} ~ ${req.endDate})`,
+            relatedId: id,
+          });
+
+          return { ...req, status: "승인", approver };
+        }
+
+        return req;
+      })
+    );
+  };
+
+  const rejectVacation = (id, approver) => {
+    const request = vacationRequests.find((r) => r.id === id);
+
+    if (request) {
+      addNotification({
+        type: "vacation",
+        title: "휴가 반려",
+        message: `${request.type} 신청이 반려되었습니다. (${request.startDate} ~ ${request.endDate})`,
+        relatedId: id,
+      });
+    }
+
+    setVacationRequests(
+      vacationRequests.map((req) =>
+        req.id === id ? { ...req, status: "반려", approver } : req
+      )
+    );
+  };
+
+  const cancelVacation = (id) => {
+    setVacationRequests(vacationRequests.filter((req) => req.id !== id));
+  };
+
+  const addEmployee = (employee) => {
+    const newEmployee = {
+      ...employee,
+      id: Math.max(...employees.map((e) => e.id), 0) + 1,
+    };
+
+    setEmployees([...employees, newEmployee]);
+  };
+
+  const updateEmployee = (id, updates) => {
+    setEmployees(
+      employees.map((emp) => (emp.id === id ? { ...emp, ...updates } : emp))
+    );
+  };
+
+  const deleteEmployee = (id) => {
+    setEmployees(employees.filter((emp) => emp.id !== id));
+  };
+
+  const updateEmployeeStatus = (id, status) => {
+    setEmployees(
+      employees.map((emp) => (emp.id === id ? { ...emp, status } : emp))
+    );
+  };
+
+  const addNotification = (notification) => {
+    const newNotification = {
+      ...notification,
+      id: Math.max(...notifications.map((n) => n.id), 0) + 1,
+      date: new Date().toISOString(),
+      read: false,
+    };
+
+    setNotifications([newNotification, ...notifications]);
+  };
+
+  const markNotificationRead = (id) => {
+    setNotifications(
+      notifications.map((notif) =>
+        notif.id === id ? { ...notif, read: true } : notif
+      )
+    );
+  };
+
+  const addCalendarEvent = (event) => {
+    const newEvent = {
+      ...event,
+      id: Math.max(...calendarEvents.map((e) => e.id), 0) + 1,
+    };
+
+    setCalendarEvents([...calendarEvents, newEvent]);
+  };
+
+  const updateCalendarEvent = (id, updates) => {
+    setCalendarEvents(
+      calendarEvents.map((event) =>
+        event.id === id ? { ...event, ...updates } : event
+      )
+    );
+  };
+
+  const deleteCalendarEvent = (id) => {
+    setCalendarEvents(calendarEvents.filter((event) => event.id !== id));
+  };
+
+  const getVacationBalance = (employeeId) => {
+    const total = 15;
+    const approvedRequests = vacationRequests.filter(
+      (req) => req.employeeId === employeeId && req.status === "승인"
+    );
+    const used = approvedRequests.reduce((sum, req) => sum + req.days, 0);
+    const remaining = total - used;
+
+    return { total, used, remaining };
+  };
+
+  const login = (email, password) => {
+    const user = employees.find(
+      (emp) => emp.email?.toLowerCase() === email.toLowerCase()
+    );
+
+    if (user) {
+      localStorage.setItem("isLogin", "true");
+      localStorage.setItem("userEmail", user.email);
+
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+    } else {
+      alert("등록되지 않은 사용자입니다.");
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem("isLogin");
+    localStorage.removeItem("userEmail");
+
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+  };
+
+  const register = (name, email, password, department, position) => {
+    const newRequest = {
+      id: Math.max(...registrationRequests.map((r) => r.id), 0) + 1,
+      name,
+      email,
+      password,
+      department,
+      position,
+      requestDate: new Date().toISOString().split("T")[0],
+      status: "대기",
+    };
+
+    setRegistrationRequests([...registrationRequests, newRequest]);
+    alert("회원가입 요청이 전송되었습니다. 관리자 승인 후 로그인이 가능합니다.");
+  };
+
+  const approveRegistration = (id) => {
+    const request = registrationRequests.find((r) => r.id === id);
+
+    if (!request) return;
+
+    const newEmployee = {
+      id: Math.max(...employees.map((e) => e.id), 0) + 1,
+      name: request.name,
+      email: request.email,
+      password: request.password,
+      department: request.department,
+      position: request.position,
+      phone: "",
+      status: "업무 중",
+      hireDate: new Date().toISOString().split("T")[0],
+      role: "일반직원",
+    };
+
+    setEmployees([...employees, newEmployee]);
+
+    setRegistrationRequests(
+      registrationRequests.map((r) =>
+        r.id === id ? { ...r, status: "승인" } : r
+      )
+    );
+
+    alert(`${request.name}님의 가입이 승인되었습니다.`);
+  };
+
+  const rejectRegistration = (id) => {
+    setRegistrationRequests(
+      registrationRequests.map((r) =>
+        r.id === id ? { ...r, status: "거절" } : r
+      )
+    );
+
+    const request = registrationRequests.find((r) => r.id === id);
+
+    if (request) {
+      alert(`${request.name}님의 가입 요청이 거절되었습니다.`);
+    }
+  };
+
+  const addDocument = (document) => {
+    const newDocument = {
+      ...document,
+      id: Math.max(...documents.map((doc) => doc.id), 0) + 1,
+      uploadDate: new Date().toISOString().split("T")[0],
+    };
+
+    setDocuments([newDocument, ...documents]);
+  };
+
+  const deleteDocument = (documentId) => {
+    setDocuments(documents.filter((doc) => doc.id !== documentId));
+  };
+
+  const addChatRoom = (room) => {
+  if (!currentUser) return null;
+
+  // 개인 채팅방 생성
+  if (!room.isGroup) {
+    const targetUser =
+      employees.find((emp) => emp.id === room.targetUserId) ||
+      employees.find((emp) => emp.name === room.name);
+
+    if (!targetUser) return null;
+
+    const roomId = getDirectRoomId(currentUser.id, targetUser.id);
+
+    const existingRoom = allChatRooms.find(
+      (chatRoom) => chatRoom.id === roomId
+    );
+
+    if (existingRoom) {
+      return existingRoom.id;
+    }
+
+    const newRoom = {
+      id: roomId,
+      name: targetUser.name,
+      lastMessage: "대화를 시작해보세요",
+      timestamp: "방금",
+      unread: 0,
+      unreadByUser: {},
+      avatar: targetUser.name.charAt(0),
+      online: targetUser.status === "업무 중",
+      isGroup: false,
+      participants: [currentUser.id, targetUser.id],
+    };
+
+    setAllChatRooms((prev) => [...prev, newRoom]);
+
+    return newRoom.id;
+  }
+
+  // 그룹 채팅방 생성
+  const newRoom = {
+    ...room,
+    id: `group-custom-${Date.now()}`,
+    unread: 0,
+    unreadByUser: {},
+    participants: room.participants || [currentUser.id],
+  };
+
+  setAllChatRooms((prev) => [...prev, newRoom]);
+
+  return newRoom.id;
+};
+
+  const updateChatRoom = (id, updates) => {
+    if (!currentUser) return;
+
+    setAllChatRooms((prev) =>
+        prev.map((room) => {
+        if (room.id !== id) return room;
+
+        const { unread, ...restUpdates } = updates;
+
+        if (unread !== undefined) {
+            return {
+            ...room,
+            ...restUpdates,
+            unreadByUser: {
+                ...(room.unreadByUser || {}),
+                [currentUser.id]: unread,
+            },
+            };
+        }
+
+        return {
+            ...room,
+            ...restUpdates,
+        };
+        })
+    );
+    };
+
+  const sendMessage = (roomId, content) => {
+    if (!currentUser) return;
+
+    const currentRoomMessages = allChatMessages[roomId] || [];
+
+    const newMessage = {
+        id: Math.max(...currentRoomMessages.map((m) => m.id), 0) + 1,
+        sender: currentUser.name,
+        senderId: currentUser.id,
+        content,
+        timestamp: new Date().toLocaleTimeString("ko-KR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        }),
+    };
+
+    setAllChatMessages((prev) => ({
+        ...prev,
+        [roomId]: [...(prev[roomId] || []), newMessage],
+    }));
+
+    setAllChatRooms((prev) =>
+        prev.map((room) => {
+        if (room.id !== roomId) return room;
+
+        const nextUnreadByUser = { ...(room.unreadByUser || {}) };
+
+        room.participants?.forEach((userId) => {
+            if (userId !== currentUser.id) {
+            nextUnreadByUser[userId] = (nextUnreadByUser[userId] || 0) + 1;
+            }
+        });
+
+        return {
+            ...room,
+            lastMessage: content,
+            timestamp: newMessage.timestamp,
+            unreadByUser: nextUnreadByUser,
+        };
+        })
+    );
+    };
+
+  return (
+    <AppContext.Provider
+      value={{
+        notices,
+        addNotice,
+        incrementNoticeViews,
+
+        vacationRequests,
+        addVacationRequest,
+        approveVacation,
+        rejectVacation,
+        cancelVacation,
+
+        employees,
+        addEmployee,
+        updateEmployee,
+        deleteEmployee,
+        updateEmployeeStatus,
+
+        notifications,
+        addNotification,
+        markNotificationRead,
+
+        calendarEvents,
+        addCalendarEvent,
+        updateCalendarEvent,
+        deleteCalendarEvent,
+
+        currentUser,
+        isAuthenticated,
+        login,
+        logout,
+
+        register,
+        registrationRequests,
+        approveRegistration,
+        rejectRegistration,
+
+        getVacationBalance,
+
+        chatRooms: visibleChatRooms,
+        chatMessages: visibleChatMessages,
+        addChatRoom,
+        updateChatRoom,
+        sendMessage,
+
+        documents,
+        addDocument,
+        deleteDocument,
+
+        customSettings,
+        updateCustomSettings,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+export function useAppContext() {
+  const context = useContext(AppContext);
+
+  if (context === undefined) {
+    throw new Error("useAppContext must be used within an AppProvider");
+  }
+
+  return context;
 }
