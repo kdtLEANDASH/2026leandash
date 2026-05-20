@@ -20,10 +20,16 @@ public class VacationService {
 
     private final VacationRepository vacationRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public VacationService(VacationRepository vacationRepository, UserRepository userRepository) {
+    public VacationService(
+            VacationRepository vacationRepository,
+            UserRepository userRepository,
+            NotificationService notificationService
+    ) {
         this.vacationRepository = vacationRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     public VacationResponseDto createVacation(Long currentUserId, VacationRequestDto requestDto) {
@@ -63,8 +69,12 @@ public class VacationService {
                 .collect(Collectors.toList());
     }
 
-    public VacationResponseDto updateVacation(Long currentUserId, String currentUserRole, Long vacationId,
-                                              VacationRequestDto requestDto) {
+    public VacationResponseDto updateVacation(
+            Long currentUserId,
+            String currentUserRole,
+            Long vacationId,
+            VacationRequestDto requestDto
+    ) {
         validateVacationRequest(requestDto);
 
         Vacation vacation = findVacation(vacationId);
@@ -109,10 +119,16 @@ public class VacationService {
         vacation.setApproverId(approverId);
         vacation.setRejectReason(null);
 
+        notificationService.createVacationApprovedNotification(vacation);
+
         return toResponseDto(vacation);
     }
 
-    public VacationResponseDto rejectVacation(Long vacationId, Long approverId, VacationRejectRequestDto requestDto) {
+    public VacationResponseDto rejectVacation(
+            Long vacationId,
+            Long approverId,
+            VacationRejectRequestDto requestDto
+    ) {
         Vacation vacation = findVacation(vacationId);
 
         validateAdminApprover(approverId);
@@ -128,6 +144,8 @@ public class VacationService {
         vacation.setStatus(VacationStatus.REJECTED);
         vacation.setApproverId(approverId);
         vacation.setRejectReason(requestDto.getRejectReason());
+
+        notificationService.createVacationRejectedNotification(vacation);
 
         return toResponseDto(vacation);
     }
