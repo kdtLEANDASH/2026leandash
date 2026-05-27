@@ -22,6 +22,7 @@ public class CalendarViewService {
 
     private final ScheduleRepository scheduleRepository;
     private final VacationRepository vacationRepository;
+    private final HolidayService holidayService;
 
     public List<CalendarEventDto> getCalendarEvents(LocalDate startDate, LocalDate endDate) {
 
@@ -65,6 +66,8 @@ public class CalendarViewService {
                     .status(vacation.getStatus() == null ? null : vacation.getStatus().name())
                     .build());
         }
+
+        events.addAll(holidayService.getHolidayEvents(startDate, endDate));
 
         events.sort(Comparator.comparing(CalendarEventDto::getStartDate));
 
