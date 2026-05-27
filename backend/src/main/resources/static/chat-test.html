@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Leandash 실시간 채팅 테스트용 프론트</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+  <style>
+    body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; background-color: #f4f7f6; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .input-group { margin-bottom: 10px; display: flex; gap: 10px; }
+    .input-group input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex: 1; }
+    button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .btn-connect { background-color: #27ae60; color: white; }
+    .btn-send { background-color: #2980b9; color: white; }
+    #chat-box { border: 1px solid #e0e0e0; background-color: #fafafa; padding: 15px; height: 400px; overflow-y: auto; margin-bottom: 15px; border-radius: 5px; }
+    .msg-row { margin-bottom: 10px; line-height: 1.4; }
+    .sender { font-weight: bold; color: #2c3e50; margin-right: 5px; }
+    .time { font-size: 11px; color: #95a5a6; margin-left: 8px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2 style="color: #2c3e50; margin-top: 0;">Leandash 채팅룸</h2>
+
+  <!-- 연결 설정 세팅 -->
+  <div class="input-group">
+    <input type="number" id="roomId" placeholder="방 번호" value="1" style="max-width: 80px;">
+    <input type="text" id="nickname" placeholder="닉네임 입력" value="유저1">
+    <button onclick="connect()" class="btn-connect"> 입장하기</button>
+  </div>
+
+  <!-- 채팅창 화면 -->
+  <div id="chat-box">
+    <div style="text-align: center; color: #aaa; font-size: 13px;">입장하기 버튼을 눌러주세요.</div>
+  </div>
+
+  <!-- 메시지 입력 폼 -->
+  <div class="input-group">
+    <input type="text" id="msg" placeholder="대화 입력" onkeypress="if(event.keyCode==13) sendMessage()">
+    <button onclick="sendMessage()" class="btn-send">전송 🚀</button>
+  </div>
+</div>
+
+<script>
+  let stompClient = null;
+  let currentRoomId = null;
+
+  // 1. 방 입장 및 소켓 연결
+  function connect() {
+    currentRoomId = document.getElementById("roomId").value;
+    let nickname = document.getElementById("nickname").value;
+
+    if (!currentRoomId || !nickname) {
+      alert("방 번호랑 닉네임 다시확인");
+      return;
+    }
+
+    // 소켓 연결 전에 과거 채팅 내역부터 싹 긁어오기 (네가 만든 API 활용)
+    fetchHistory(currentRoomId);
+
+    let socket = new SockJS('/ws/chat');
+    stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({}, function (frame) {
+      console.log('✅ STOMP 연결 성공!');
+
+      // 해당 방 구독
+      stompClient.subscribe('/sub/chat/room/' + currentRoomId, function (chat) {
+        let content = JSON.parse(chat.body);
+        appendMessage(content.senderName, content.message, content.sentAt);
+      });
+    }, function (error) {
+      console.error("연결 에러:", error);
+      alert("서버 연결 실패");
+    });
+  }
+
+  // 2. 메시지 전송 로직
+  function sendMessage() {
+    let messageInput = document.getElementById("msg");
+    let message = messageInput.value.trim();
+    let nickname = document.getElementById("nickname").value;
+
+    if (!message || !stompClient) return;
+
+    let chatMessage = {
+      roomId: parseInt(currentRoomId),
+      senderId: 1, // 일단 테스트용으로 1번 유저 고정
+      senderName: nickname,
+      message: message
+    };
+
+    // 네가 설정한 pub 주소로 쏘기
+    stompClient.send("/pub/chat/message", {}, JSON.stringify(chatMessage));
+    messageInput.value = ''; // 입력창 비우기
+  }
+
+  // 3. 화면에 메시지 찍는 UI 함수
+  function appendMessage(sender, msg, time) {
+    let chatBox = document.getElementById("chat-box");
+    let timeStr = time ? time : "";
+
+    let html = `
+            <div class="msg-row">
+                <span class="sender">[${sender}]</span>
+                <span>${msg}</span>
+                <span class="time">${timeStr}</span>
+            </div>
+        `;
+
+    // 처음 입장 안내 멘트 있으면 지우기
+    if (chatBox.innerHTML.includes("입장하기 버튼을")) chatBox.innerHTML = "";
+
+    chatBox.innerHTML += html;
+    chatBox.scrollTop = chatBox.scrollHeight; // 스크롤 맨 아래로 꽂기
+  }
+
+  // 4. (보너스) 과거 채팅 내역 불러오기
+  function fetchHistory(roomId) {
+    fetch('/api/chat/rooms/' + roomId + '/messages')
+            .then(response => {
+              if (!response.ok) throw new Error('방이 없거나 조회 실패함');
+              return response.json();
+            })
+            .then(data => {
+              let chatBox = document.getElementById("chat-box");
+              chatBox.innerHTML = `<div style="text-align: center; color: #aaa; margin-bottom: 10px;">--- 📜 과거 채팅 내역 ---</div>`;
+
+              // 데이터 배열 돌면서 화면에 찍기
+              data.forEach(msg => {
+                appendMessage(msg.senderName, msg.message, msg.sentAt);
+              });
+
+              chatBox.innerHTML += `<div style="text-align: center; color: #aaa; margin-top: 10px; margin-bottom: 10px;">--- 🟢 실시간 채팅 시작 ---</div>`;
+              chatBox.scrollTop = chatBox.scrollHeight;
+            })
+            .catch(error => {
+              console.log('과거 내역 못 불러옴(처음 파는 방일 수도):', error);
+              document.getElementById("chat-box").innerHTML = `<div style="text-align: center; color: #aaa; font-size: 13px;">새로운 방입니다. 첫 메시지를 남겨보세요!</div>`;
+            });
+  }
+</script>
+</body>
+</html>
