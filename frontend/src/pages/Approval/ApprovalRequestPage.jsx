@@ -1,0 +1,505 @@
+import { useState } from "react";
+import { FileCheck, Plus, Search as SearchIcon, Upload } from "lucide-react";
+import { Card, CardContent } from "@/components/UI/card";
+import { Input } from "@/components/UI/input";
+import { Button } from "@/components/UI/button";
+import { Badge } from "@/components/UI/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/UI/dialog";
+import { Label } from "@/components/UI/label";
+import { Textarea } from "@/components/UI/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/UI/select";
+import { useAppContext } from "@/store/AppProvider";
+import { cn } from "@/components/UI/utils";
+
+export function ApprovalRequestPage() {
+  const { currentUser, customSettings } = useAppContext();
+  const isDark = customSettings?.darkMode;
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedType, setSelectedType] = useState("전체");
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [showDialog, setShowDialog] = useState(false);
+
+  const [formType, setFormType] = useState("지출결재");
+  const [formTitle, setFormTitle] = useState("");
+  const [formContent, setFormContent] = useState("");
+  const [formAmount, setFormAmount] = useState("");
+
+  const [requests, setRequests] = useState([
+    {
+      id: 1,
+      title: "사무용품 구매",
+      content: "프린터 용지 및 문구류 구매 결재 요청",
+      type: "지출결재",
+      requester: "김철수",
+      date: "2024-04-08",
+      status: "승인",
+      amount: 150000,
+    },
+    {
+      id: 2,
+      title: "신규 프로젝트 진행",
+      content: "A사 웹사이트 리뉴얼 프로젝트 착수 결재",
+      type: "업무결재",
+      requester: "박민수",
+      date: "2024-04-10",
+      status: "대기중",
+    },
+  ]);
+
+  const types = ["전체", "지출결재", "업무결재", "기타"];
+
+  const selectedButtonClass = isDark
+    ? "bg-[#5c5c73] hover:bg-[#6a6a82] text-white"
+    : "bg-blue-600 hover:bg-blue-700 text-white";
+
+  const inactiveTypeButtonClass = isDark
+    ? "bg-transparent border-transparent text-zinc-100 hover:bg-[#3f3f48] hover:border-[#5c5c73]"
+    : "";
+
+  const filteredRequests = requests.filter((request) => {
+    const matchesSearch =
+      request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.content.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesType =
+      selectedType === "전체" || request.type === selectedType;
+
+    return matchesSearch && matchesType;
+  });
+
+  const getTypeColor = (type) => {
+    const colors = {
+      지출결재: "bg-purple-100 text-purple-700",
+      업무결재: "bg-green-100 text-green-700",
+      기타: "bg-gray-100 text-gray-700",
+    };
+
+    return colors[type] || "bg-gray-100 text-gray-700";
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      대기중: "bg-yellow-100 text-yellow-700",
+      승인: "bg-green-100 text-green-700",
+      반려: "bg-red-100 text-red-700",
+    };
+
+    return colors[status] || "bg-gray-100 text-gray-700";
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (!formTitle.trim() || !formContent.trim()) {
+      alert("제목과 내용을 모두 입력해주세요.");
+      return;
+    }
+
+    const newRequest = {
+      id: requests.length + 1,
+      title: formTitle,
+      content: formContent,
+      type: formType,
+      requester: currentUser?.name || "익명",
+      date: new Date().toISOString().split("T")[0],
+      status: "대기중",
+      amount: formAmount ? parseInt(formAmount, 10) : undefined,
+    };
+
+    setRequests([...requests, newRequest]);
+
+    setFormTitle("");
+    setFormContent("");
+    setFormType("지출결재");
+    setFormAmount("");
+    setShowDialog(false);
+  };
+
+  const getDarkCardStyle = () => {
+    if (!isDark) return undefined;
+
+    return {
+      backgroundColor: "#35353d",
+      borderColor: "#5c5c73",
+      color: "#ffffff",
+    };
+  };
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2
+            className={cn(
+              "text-2xl font-semibold mb-1 flex items-center gap-2",
+              isDark ? "text-white" : "text-gray-900"
+            )}
+          >
+            <FileCheck className="size-7 text-blue-600" />
+            결재신청
+          </h2>
+
+          <p className={isDark ? "text-zinc-300" : "text-gray-600"}>
+            결재가 필요한 사항을 신청하세요
+          </p>
+        </div>
+
+        <Dialog open={showDialog} onOpenChange={setShowDialog}>
+          <DialogTrigger asChild>
+            <Button className={cn(selectedButtonClass)}>
+              <Plus className="size-5 mr-2" />
+              결재 신청
+            </Button>
+          </DialogTrigger>
+
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>새 결재 신청</DialogTitle>
+            </DialogHeader>
+
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div className="space-y-2">
+                <Label htmlFor="type">결재 유형</Label>
+                <Select
+                  value={formType}
+                  onValueChange={(value) => {
+                    setFormType(value);
+
+                    if (value !== "지출결재") {
+                      setFormAmount("");
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="유형 선택" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    <SelectItem value="지출결재">지출결재</SelectItem>
+                    <SelectItem value="업무결재">업무결재</SelectItem>
+                    <SelectItem value="기타">기타</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="title">제목</Label>
+                <Input
+                  id="title"
+                  placeholder="결재 제목을 입력하세요"
+                  value={formTitle}
+                  onChange={(e) => setFormTitle(e.target.value)}
+                />
+              </div>
+
+              {formType === "지출결재" && (
+                <div className="space-y-2">
+                  <Label htmlFor="amount">금액</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    placeholder="금액을 입력하세요"
+                    value={formAmount}
+                    onChange={(e) => setFormAmount(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="content">내용</Label>
+                <Textarea
+                  id="content"
+                  placeholder="결재 내용을 작성하세요"
+                  rows={8}
+                  value={formContent}
+                  onChange={(e) => setFormContent(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="file">첨부파일</Label>
+                <div
+                  className={cn(
+                    "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
+                    isDark
+                      ? "border-[#5c5c73] hover:border-[#8b8b96]"
+                      : "border-gray-300 hover:border-blue-400"
+                  )}
+                >
+                  <Upload className="size-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">
+                    파일을 드래그하거나 클릭하여 업로드
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="submit"
+                  className={cn("flex-1", selectedButtonClass)}
+                >
+                  신청하기
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowDialog(false)}
+                >
+                  취소
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="mb-6 flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="결재 검색..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          {types.map((type) => {
+            const isSelected = selectedType === type;
+
+            return (
+              <Button
+                key={type}
+                variant={isSelected ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedType(type)}
+                className={cn(
+                  isSelected ? selectedButtonClass : inactiveTypeButtonClass
+                )}
+              >
+                {type}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {filteredRequests.map((request) => (
+          <Card
+            key={request.id}
+            className="transition-shadow cursor-pointer border"
+            style={getDarkCardStyle()}
+            onMouseEnter={(e) => {
+              if (isDark) {
+                e.currentTarget.style.backgroundColor = "#3f3f48";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (isDark) {
+                e.currentTarget.style.backgroundColor = "#35353d";
+              }
+            }}
+            onClick={() => setSelectedRequest(request)}
+          >
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2 flex-1">
+                  <h3
+                    className={cn(
+                      "font-semibold flex-1",
+                      isDark ? "text-white" : "text-gray-900"
+                    )}
+                  >
+                    {request.title}
+                  </h3>
+
+                  <Badge className={getStatusColor(request.status)}>
+                    {request.status}
+                  </Badge>
+                </div>
+              </div>
+
+              <p
+                className={cn(
+                  "text-sm mb-3 line-clamp-2",
+                  isDark ? "text-zinc-200" : "text-gray-600"
+                )}
+              >
+                {request.content}
+              </p>
+
+              <div
+                className={cn(
+                  "flex items-center justify-between text-sm",
+                  isDark ? "text-zinc-300" : "text-gray-500"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Badge className={getTypeColor(request.type)}>
+                    {request.type}
+                  </Badge>
+
+                  <span>{request.requester}</span>
+
+                  {request.amount && (
+                    <span
+                      className={cn(
+                        "font-semibold",
+                        isDark ? "text-white" : "text-gray-700"
+                      )}
+                    >
+                      {request.amount.toLocaleString()}원
+                    </span>
+                  )}
+                </div>
+
+                <span>{request.date}</span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {filteredRequests.length === 0 && (
+        <div className="text-center py-16">
+          <FileCheck className="size-16 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500">검색 결과가 없습니다.</p>
+        </div>
+      )}
+
+      {selectedRequest && (
+        <Dialog
+          open={!!selectedRequest}
+          onOpenChange={() => setSelectedRequest(null)}
+        >
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <DialogTitle className="text-2xl mb-2">
+                    {selectedRequest.title}
+                  </DialogTitle>
+
+                  <div className="flex items-center gap-3 text-sm text-gray-600">
+                    <Badge className={getTypeColor(selectedRequest.type)}>
+                      {selectedRequest.type}
+                    </Badge>
+
+                    <Badge className={getStatusColor(selectedRequest.status)}>
+                      {selectedRequest.status}
+                    </Badge>
+
+                    <span>{selectedRequest.requester}</span>
+                    <span>{selectedRequest.date}</span>
+                  </div>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="mt-6 space-y-6">
+              {selectedRequest.amount && (
+                <div>
+                  <h4
+                    className={cn(
+                      "font-semibold mb-2",
+                      isDark ? "text-white" : "text-gray-900"
+                    )}
+                  >
+                    신청 금액
+                  </h4>
+
+                  <div
+                    className={cn(
+                      "rounded-lg p-4",
+                      isDark ? "bg-[#35353d]" : "bg-blue-50"
+                    )}
+                  >
+                    <p
+                      className={cn(
+                        "text-2xl font-bold",
+                        isDark ? "text-white" : "text-blue-700"
+                      )}
+                    >
+                      {selectedRequest.amount.toLocaleString()}원
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h4
+                  className={cn(
+                    "font-semibold mb-2",
+                    isDark ? "text-white" : "text-gray-900"
+                  )}
+                >
+                  신청 내용
+                </h4>
+
+                <div
+                  className={cn(
+                    "rounded-lg p-4",
+                    isDark ? "bg-[#35353d]" : "bg-gray-50"
+                  )}
+                >
+                  <p
+                    className={cn(
+                      "whitespace-pre-wrap leading-relaxed",
+                      isDark ? "text-zinc-100" : "text-gray-700"
+                    )}
+                  >
+                    {selectedRequest.content}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h4
+                  className={cn(
+                    "font-semibold mb-2",
+                    isDark ? "text-white" : "text-gray-900"
+                  )}
+                >
+                  첨부파일
+                </h4>
+
+                <div
+                  className={cn(
+                    "rounded-lg p-4",
+                    isDark ? "bg-[#35353d]" : "bg-gray-50"
+                  )}
+                >
+                  <p
+                    className={cn(
+                      "text-sm",
+                      isDark ? "text-zinc-300" : "text-gray-500"
+                    )}
+                  >
+                    첨부된 파일이 없습니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}
