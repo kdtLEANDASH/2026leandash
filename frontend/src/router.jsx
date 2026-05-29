@@ -1,11 +1,18 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { MainLayout } from "@/components/Layout/MainLayout";
 import MainPage from "@/pages/MainPage/MainPage";
 
 import { DashboardPage } from "@/pages/Dashboard/DashboardPage";
 import { EmployeesPage } from "@/pages/Employees/EmployeesPage";
-import { VacationPage } from "@/pages/Vacation/VacationPage";
+
+import VacationLayout from "@/pages/Vacation/VacationLayout";
+import VacationInfoPage from "@/pages/Vacation/VacationInfoPage";
+import VacationRecommendPage from "@/pages/Vacation/VacationRecommendPage";
+import VacationRequestPage from "@/pages/Vacation/VacationRequestPage";
+import VacationListPage from "@/pages/Vacation/VacationListPage";
+import VacationStatusPage from "@/pages/Vacation/VacationStatusPage";
+
 import { CalendarPage } from "@/pages/Calendar/CalendarPage";
 import { ChatPage } from "@/pages/Board/ChatPage";
 import { EvaluationPage } from "@/pages/Evaluation/EvaluationPage";
@@ -19,26 +26,36 @@ import { ApprovalRequestPage } from "@/pages/Approval/ApprovalRequestPage";
 import { MyPage } from "@/pages/MyPage/MyPage";
 import { CommunityPage } from "@/pages/Community/CommunityPage";
 import { CommunityDetailPage } from "@/pages/Community/CommunityDetailPage";
+import { DocumentsPage } from "@/pages/Documents/DocumentsPage";
 
-// 👉 로그인/회원가입도 라우터에 추가 (중요)
 import { LoginPage } from "@/pages/Auth/LoginPage";
 import { RegisterPage } from "@/pages/Auth/RegisterPage";
 
 export const router = createBrowserRouter([
-  // ✅ 메인 레이아웃 구조
   {
     path: "/",
     Component: MainLayout,
     children: [
-      // ⭐ 메인페이지 (여기 핵심)
       { index: true, Component: MainPage },
 
-      // 내부 페이지들
       { path: "dashboard", Component: DashboardPage },
       { path: "notice", Component: NoticePage },
       { path: "notice/:noticeId", Component: NoticePage },
       { path: "employees", Component: EmployeesPage },
-      { path: "vacation", Component: VacationPage },
+
+      {
+        path: "vacation",
+        Component: VacationLayout,
+        children: [
+          { index: true, element: <Navigate to="info" replace /> },
+          { path: "info", Component: VacationInfoPage },
+          { path: "recommend", Component: VacationRecommendPage },
+          { path: "request", Component: VacationRequestPage },
+          { path: "list", Component: VacationListPage },
+          { path: "status", Component: VacationStatusPage },
+        ],
+      },
+
       { path: "calendar", Component: CalendarPage },
       { path: "chat", Component: ChatPage },
       { path: "inquiry", Component: InquiryPage },
@@ -51,10 +68,13 @@ export const router = createBrowserRouter([
       { path: "registration-approval", Component: RegistrationApprovalPage },
       { path: "search", Component: SearchPage },
       { path: "mypage", Component: MyPage },
+	  {
+	    path: "/documents",
+	    element: <DocumentsPage />,
+	  },
     ],
   },
 
-  // ✅ 로그인/회원가입은 레이아웃 없이 따로
   {
     path: "/login",
     Component: LoginPage,

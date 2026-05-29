@@ -1,1 +1,71 @@
 @import "./styles/index.css";
+/* 다크모드 공통 보정 - 배경은 어둡게, 카드는 회색 */
+.dark main {
+  background-color: #27272a;
+  color: #f4f4f5;
+}
+
+/* 카드 */
+.dark .bg-white,
+.dark .bg-black,
+.dark .bg-zinc-950,
+.dark .bg-slate-950,
+.dark .bg-gray-950,
+.dark .bg-neutral-950,
+.dark .bg-zinc-900,
+.dark .bg-slate-900,
+.dark .bg-gray-900,
+.dark .bg-neutral-900 {
+  background-color: #3f3f46 !important;
+}
+
+/* 카드 안쪽 보조 배경 */
+.dark .bg-gray-50 {
+  background-color: #52525b !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: #63636b !important;
+}
+
+/* 텍스트 */
+.dark .text-gray-900 {
+  color: #ffffff !important;
+}
+
+.dark .text-gray-800 {
+  color: #f4f4f5 !important;
+}
+
+.dark .text-gray-700 {
+  color: #e5e7eb !important;
+}
+
+.dark .text-gray-600 {
+  color: #d1d5db !important;
+}
+
+.dark .text-gray-500 {
+  color: #cbd5e1 !important;
+}
+
+/* 테두리 */
+.dark .border-gray-200,
+.dark .border-gray-100,
+.dark .border-gray-300 {
+  border-color: #71717a !important;
+}
+
+/* 입력창 */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #52525b !important;
+  color: #ffffff !important;
+  border-color: #8b8b96 !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #e5e7eb !important;
+}

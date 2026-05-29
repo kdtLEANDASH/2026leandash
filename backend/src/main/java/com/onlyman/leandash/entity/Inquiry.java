@@ -82,4 +82,11 @@ public class Inquiry {
     void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void answer(User answeredBy, String answerContent) {
+        this.answeredBy = answeredBy;
+        this.answerContent = answerContent;
+        this.answeredAt = LocalDateTime.now();
+        this.status = InquiryStatus.ANSWERED;
+    }
 }
