@@ -49,16 +49,6 @@ export function MyPage() {
                 return "bg-gray-100 text-gray-700";
         }
     };
-    const getMBTIColor = (mbti) => {
-        const type = mbti.slice(0, 2);
-        const colors = {
-            IS: "bg-blue-100 text-blue-700",
-            IN: "bg-purple-100 text-purple-700",
-            ES: "bg-green-100 text-green-700",
-            EN: "bg-orange-100 text-orange-700",
-        };
-        return colors[type] || "bg-gray-100 text-gray-700";
-    };
     if (!currentUser) {
         return (<div className="flex items-center justify-center h-full">
         <p className="text-gray-500">사용자 정보를 불러올 수 없습니다.</p>
@@ -104,9 +94,6 @@ export function MyPage() {
                 {currentUser.name}
               </h3>
               <p className="text-sm text-gray-500 mb-3">{currentUser.position}</p>
-              <Badge className={getMBTIColor(currentUser.mbti)} variant="outline">
-                {currentUser.mbti}
-              </Badge>
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
@@ -171,15 +158,7 @@ export function MyPage() {
                       <MapPin className="size-4 text-gray-400"/>
                       <span className="text-gray-900">{currentUser.department}</span>
                     </div>)}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>MBTI</Label>
-                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                    <Award className="size-4 text-gray-400"/>
-                    <span className="text-gray-900">{currentUser.mbti}</span>
-                  </div>
-                </div>
+                </div>                
 
                 <div className="space-y-2 md:col-span-2">
                   <Label>비밀번호</Label>

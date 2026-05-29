@@ -37,5 +37,10 @@ public class CalendarScheduleController {
     public List<CalendarScheduleResponseDto> getCalendarSchedulesByUserId(@PathVariable Long userId) {
         return calendarScheduleService.getCalendarSchedulesByUserId(userId);
     }
+    
+    @DeleteMapping("/{scheduleId}")
+    public void deleteCalendarSchedule(@PathVariable Long scheduleId) {
+        calendarScheduleService.deleteCalendarSchedule(scheduleId);
+    }
 }
 
