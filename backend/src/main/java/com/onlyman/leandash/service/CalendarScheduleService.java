@@ -81,4 +81,8 @@ public class CalendarScheduleService {
 
         return responseDto;
     }
+    
+    public void deleteCalendarSchedule(Long scheduleId) {
+        calendarScheduleRepository.deleteById(scheduleId);
+    }
 }

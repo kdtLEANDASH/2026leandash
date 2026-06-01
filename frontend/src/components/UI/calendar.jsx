@@ -10,23 +10,39 @@ function Calendar({
   className,
   classNames,
   showOutsideDays = true,
-  datesWithEvents,
-  holidayDates,
+  personalDates = [],
+  teamDates = [],
+  companyDates = [],
+  vacationDates = [],
+  holidayDates = [],
   underlineDate,
   ...props
 }) {
-  const modifiers = {
-    hasEvent: datesWithEvents || [],
-    holiday: holidayDates || [],
-    underline: underlineDate ? [underlineDate] : [],
-  };
+	const modifiers = {
+	  personal: personalDates || [],
+	  team: teamDates || [],
+	  company: companyDates || [],
+	  vacation: vacationDates || [],
+	  holiday: holidayDates || [],
 
-  const modifiersClassNames = {
-    hasEvent: "bg-cyan-100 text-cyan-900 font-semibold",
-    holiday: "bg-red-100 text-red-900",
-	underline:
-	  "border-b-4 border-gray-900 rounded-none font-bold",
-  };
+	  underline: underlineDate ? [underlineDate] : [],
+
+	  saturday: (date) => date.getDay() === 6,
+	  sunday: (date) => date.getDay() === 0,
+	};
+
+	const modifiersClassNames = {
+	  personal: "bg-purple-100 text-purple-900 font-semibold",
+	  team: "bg-blue-100 text-blue-900 font-semibold",
+	  company: "bg-green-100 text-green-900 font-semibold",
+	  vacation: "bg-orange-100 text-orange-900 font-semibold",
+	  holiday: "bg-red-100 text-red-700 font-semibold",
+
+	  saturday: "text-blue-600",
+	  sunday: "text-red-600",
+
+	  underline: "border-b-4 border-gray-900 rounded-none font-bold",
+	};
 
   return (
     <DayPicker
@@ -63,8 +79,8 @@ function Calendar({
           "day-range-start aria-selected:bg-primary aria-selected:text-primary-foreground",
         day_range_end:
           "day-range-end aria-selected:bg-primary aria-selected:text-primary-foreground",
-		  day_selected:
-		    "bg-slate-100 text-gray-900",
+        day_selected:
+          "bg-slate-100 text-gray-900 hover:bg-slate-100 hover:text-gray-900",
         day_today: "bg-accent text-accent-foreground",
         day_outside:
           "day-outside text-muted-foreground aria-selected:text-muted-foreground",
@@ -77,11 +93,11 @@ function Calendar({
       modifiers={modifiers}
       modifiersClassNames={modifiersClassNames}
       components={{
-        IconLeft: ({ className, ...props }) => (
-          <ChevronLeft className={cn("size-4", className)} {...props} />
+        IconLeft: ({ className, ...iconProps }) => (
+          <ChevronLeft className={cn("size-4", className)} {...iconProps} />
         ),
-        IconRight: ({ className, ...props }) => (
-          <ChevronRight className={cn("size-4", className)} {...props} />
+        IconRight: ({ className, ...iconProps }) => (
+          <ChevronRight className={cn("size-4", className)} {...iconProps} />
         ),
       }}
       {...props}

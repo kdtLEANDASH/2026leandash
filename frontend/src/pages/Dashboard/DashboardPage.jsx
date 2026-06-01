@@ -349,44 +349,36 @@ export function DashboardPage() {
           <CardContent>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="flex justify-center">
-                <CalendarComp
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  className={cn(
-                    "rounded-md border text-base",
-                    isDark ? "bg-zinc-700 border-zinc-500 text-zinc-100" : ""
-                  )}
-                  classNames={{
-                    months:
-                      "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-                    month: "space-y-4",
-                    caption: "flex justify-center pt-1 relative items-center",
-                    caption_label: "text-lg font-medium",
-                    nav: "space-x-1 flex items-center",
-                    nav_button:
-                      "h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100",
-                    table: "w-full border-collapse space-y-1",
-                    head_row: "flex",
-                    head_cell: cn(
-                      "rounded-md w-10 font-normal text-sm",
-                      isDark ? "text-zinc-300" : "text-gray-500"
-                    ),
-                    row: "flex w-full mt-2",
-                    cell: "h-10 w-10 text-center text-sm p-0 relative",
-                    day: "h-10 w-10 p-0 font-normal",
-                  }}
-                  modifiers={{
-                    hasEvent: datesWithEvents,
-                    holiday: holidayDates,
-                  }}
-                  modifiersClassNames={{
-                    hasEvent:
-                      "bg-cyan-100 text-cyan-900 font-semibold hover:bg-cyan-200",
-                    holiday:
-                      "bg-red-100 text-red-900 font-semibold hover:bg-red-200",
-                  }}
-                />
+			  <CalendarComp
+			    mode="single"
+			    selected={selectedDate}
+			    onSelect={setSelectedDate}
+			    className={cn(
+			      "rounded-md border text-base",
+			      isDark ? "bg-zinc-700 border-zinc-500 text-zinc-100" : ""
+			    )}
+			    classNames={{
+			      months:
+			        "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+			      month: "space-y-4",
+			      caption: "flex justify-center pt-1 relative items-center",
+			      caption_label: "text-lg font-medium",
+			      nav: "space-x-1 flex items-center",
+			      nav_button:
+			        "h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100",
+			      table: "w-full border-collapse space-y-1",
+			      head_row: "flex",
+			      head_cell: cn(
+			        "rounded-md w-10 font-normal text-sm",
+			        isDark ? "text-zinc-300" : "text-gray-500"
+			      ),
+			      row: "flex w-full mt-2",
+			      cell: "h-10 w-10 text-center text-sm p-0 relative",
+			      day: "h-10 w-10 p-0 font-normal",
+			    }}
+			    datesWithEvents={datesWithEvents}
+			    holidayDates={holidayDates}
+			  />
               </div>
 
               <div className="space-y-3">

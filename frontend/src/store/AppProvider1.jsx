@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { getMyProfileApi } from "@/api/userApi";
 export const AppContext = createContext(undefined);
 const SETTINGS_KEY = "leandash_custom_settings";
 
@@ -701,122 +700,22 @@ export function AppProvider({ children }) {
     );
   };
 
-  const getDepartmentName = (user) => {
-    if (!user) return "";
-
-    if (typeof user.department === "string") return user.department;
-
-    return (
-      user.departmentName ||
-      user.department_name ||
-      user.department?.departmentName ||
-      user.department?.department_name ||
-      user.department?.name ||
-      user.department?.departmentTitle ||
-      ""
-    );
-  };
-
-  const getDepartmentId = (user) => {
-    if (!user) return undefined;
-
-    return (
-      user.departmentId ||
-      user.department_id ||
-      user.department?.departmentId ||
-      user.department?.department_id ||
-      user.department?.id
-    );
-  };
-
   const buildApiUser = (apiUser, fallbackEmployee = null) => {
-    const employeeNo =
-      apiUser?.employeeNo ||
-      apiUser?.employee_no ||
-      fallbackEmployee?.employeeNo ||
-      "";
-
-    const userId =
-      apiUser?.userId ||
-      apiUser?.user_id ||
-      apiUser?.id ||
-      fallbackEmployee?.id ||
-      employeeNo ||
-      "api-user";
+    const employeeNo = apiUser?.employeeNo || apiUser?.employee_no || fallbackEmployee?.employeeNo || "";
+    const userId = apiUser?.userId || apiUser?.id || fallbackEmployee?.id || employeeNo || "api-user";
 
     return {
       ...(fallbackEmployee || {}),
       id: userId,
       employeeNo,
-      name:
-        apiUser?.userName ||
-        apiUser?.user_name ||
-        apiUser?.name ||
-        fallbackEmployee?.name ||
-        employeeNo ||
-        "사용자",
+      name: apiUser?.userName || apiUser?.name || fallbackEmployee?.name || employeeNo || "사용자",
       email: apiUser?.email || fallbackEmployee?.email || "",
-      department: getDepartmentName(apiUser) || fallbackEmployee?.department || "",
-      departmentId: getDepartmentId(apiUser) || fallbackEmployee?.departmentId,
+      department: apiUser?.departmentName || apiUser?.department || fallbackEmployee?.department || "",
       position: apiUser?.position || fallbackEmployee?.position || "",
       phone: apiUser?.phone || fallbackEmployee?.phone || "",
-      address: apiUser?.address || fallbackEmployee?.address || "",
-      birthDate:
-        apiUser?.birthDate ||
-        apiUser?.birth_date ||
-        fallbackEmployee?.birthDate ||
-        "",
-      gender: apiUser?.gender || fallbackEmployee?.gender || "",
-      status: normalizeStatus(
-        apiUser?.userStatus || apiUser?.user_status || apiUser?.status || fallbackEmployee?.status
-      ),
+      status: normalizeStatus(apiUser?.userStatus || apiUser?.status || fallbackEmployee?.status),
       role: normalizeRole(apiUser?.role || fallbackEmployee?.role),
-      hireDate:
-        apiUser?.hireDate ||
-        apiUser?.hire_date ||
-        apiUser?.createdAt?.slice?.(0, 10) ||
-        apiUser?.created_at?.slice?.(0, 10) ||
-        fallbackEmployee?.hireDate ||
-        "",
     };
-  };
-
-  const saveCurrentUserToStorage = (user, rawUser = {}) => {
-    localStorage.setItem("isLogin", "true");
-    localStorage.setItem("employeeNo", user?.employeeNo || "");
-    localStorage.setItem("userEmail", user?.email || "");
-    localStorage.setItem("userName", user?.name || "");
-    localStorage.setItem("userRole", rawUser?.role || user?.role || "USER");
-    localStorage.setItem(
-      "userStatus",
-      rawUser?.userStatus || rawUser?.user_status || rawUser?.status || user?.status || "ONLINE"
-    );
-    localStorage.setItem("userPhone", user?.phone || "");
-    localStorage.setItem("userPosition", user?.position || "");
-    localStorage.setItem("userDepartment", user?.department || "");
-  };
-
-  const loadMyProfile = async (fallbackUser = null) => {
-    const token = localStorage.getItem("accessToken");
-
-    if (!token) return null;
-
-    try {
-      const profile = await getMyProfileApi();
-      const matchedEmployee = findEmployeeByEmployeeNo(
-        profile?.employeeNo || profile?.employee_no || fallbackUser?.employeeNo
-      );
-      const normalizedUser = buildApiUser(profile, matchedEmployee || fallbackUser);
-
-      saveCurrentUserToStorage(normalizedUser, profile);
-      setCurrentUser(normalizedUser);
-      setIsAuthenticated(true);
-
-      return normalizedUser;
-    } catch (error) {
-      console.warn("내 정보 API 조회 실패. 저장된 로그인 정보로 임시 표시합니다.", error);
-      return null;
-    }
   };
 
   useEffect(() => {
@@ -826,9 +725,6 @@ export function AppProvider({ children }) {
     const savedUserName = localStorage.getItem("userName");
     const savedRole = localStorage.getItem("userRole");
     const savedStatus = localStorage.getItem("userStatus");
-    const savedPhone = localStorage.getItem("userPhone");
-    const savedPosition = localStorage.getItem("userPosition");
-    const savedDepartment = localStorage.getItem("userDepartment");
     const savedLoginMode = localStorage.getItem("loginMode");
 
     if (!savedLogin) return;
@@ -840,23 +736,19 @@ export function AppProvider({ children }) {
       );
 
     if (savedLoginMode === "api") {
-      const fallbackUser = buildApiUser(
-        {
-          employeeNo: savedEmployeeNo || savedEmployee?.employeeNo || "api-user",
-          userName: savedUserName || savedEmployee?.name || savedEmployeeNo || "사용자",
-          email: savedEmail || savedEmployee?.email || "",
-          phone: savedPhone || savedEmployee?.phone || "",
-          position: savedPosition || savedEmployee?.position || "",
-          departmentName: savedDepartment || savedEmployee?.department || "",
-          role: savedRole || "USER",
-          userStatus: savedStatus || "ONLINE",
-        },
-        savedEmployee
+      setCurrentUser(
+        buildApiUser(
+          {
+            employeeNo: savedEmployeeNo || savedEmployee?.employeeNo || "api-user",
+            userName: savedUserName || savedEmployee?.name || savedEmployeeNo || "사용자",
+            email: savedEmail || savedEmployee?.email || "",
+            role: savedRole || "USER",
+            userStatus: savedStatus || "ONLINE",
+          },
+          savedEmployee
+        )
       );
-
-      setCurrentUser(fallbackUser);
       setIsAuthenticated(true);
-      loadMyProfile(fallbackUser);
       return;
     }
 
@@ -872,9 +764,6 @@ export function AppProvider({ children }) {
           employeeNo: savedEmployeeNo || "api-user",
           userName: savedUserName || savedEmployeeNo || "사용자",
           email: savedEmail || "",
-          phone: savedPhone || "",
-          position: savedPosition || "",
-          departmentName: savedDepartment || "",
           role: savedRole || "USER",
           userStatus: savedStatus || "ONLINE",
         })
@@ -1077,12 +966,16 @@ export function AppProvider({ children }) {
       const matchedEmployee = findEmployeeByEmployeeNo(inputEmployeeNo);
       const normalizedUser = buildApiUser(apiUser, matchedEmployee);
 
-      saveCurrentUserToStorage(normalizedUser, apiUser);
+      localStorage.setItem("isLogin", "true");
+      localStorage.setItem("employeeNo", normalizedUser.employeeNo || inputEmployeeNo);
+      localStorage.setItem("userEmail", normalizedUser.email || "");
+      localStorage.setItem("userName", normalizedUser.name || "");
+      localStorage.setItem("userRole", apiUser?.role || normalizedUser.role || "USER");
+      localStorage.setItem("userStatus", apiUser?.userStatus || apiUser?.status || "ONLINE");
       localStorage.setItem("loginMode", "api");
 
       setCurrentUser(normalizedUser);
       setIsAuthenticated(true);
-      loadMyProfile(normalizedUser);
       return true;
     }
 
@@ -1095,9 +988,6 @@ export function AppProvider({ children }) {
       localStorage.setItem("userName", user.name || "");
       localStorage.setItem("userRole", user.role || "일반직원");
       localStorage.setItem("userStatus", user.status || "업무 중");
-      localStorage.setItem("userPhone", user.phone || "");
-      localStorage.setItem("userPosition", user.position || "");
-      localStorage.setItem("userDepartment", user.department || "");
       localStorage.setItem("loginMode", "dummy");
 
       setCurrentUser(user);
@@ -1116,9 +1006,6 @@ export function AppProvider({ children }) {
     localStorage.removeItem("userName");
     localStorage.removeItem("userRole");
     localStorage.removeItem("userStatus");
-    localStorage.removeItem("userPhone");
-    localStorage.removeItem("userPosition");
-    localStorage.removeItem("userDepartment");
     localStorage.removeItem("loginMode");
 
     setCurrentUser(null);
