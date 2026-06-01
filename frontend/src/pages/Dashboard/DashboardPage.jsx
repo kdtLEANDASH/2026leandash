@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Calendar,
   Bell,
@@ -19,11 +19,11 @@ import { Button } from "../../components/UI/button";
 import { Calendar as CalendarComp } from "../../components/UI/calendar";
 import { useAppContext } from "../../store/AppProvider";
 import { cn } from "../../components/UI/utils";
+import { scheduleApi } from "../../api/scheduleApi";
 
 export function DashboardPage() {
   const {
     notices = [],
-    calendarEvents = [],
     getVacationBalance,
     currentUser,
     vacationRequests = [],
@@ -44,10 +44,77 @@ export function DashboardPage() {
   const textMain = isDark ? "text-zinc-100" : "text-gray-900";
   const textSub = isDark ? "text-zinc-300" : "text-gray-600";
   const textMuted = isDark ? "text-zinc-400" : "text-gray-500";
-
   const hoverClass = isDark ? "hover:!bg-zinc-500" : "hover:bg-gray-50";
 
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [calendarEvents, setCalendarEvents] = useState([]);
+
+  const formatDate = (value) => {
+    if (!value) return "";
+
+    if (typeof value === "string") {
+      return value.includes("T") ? value.split("T")[0] : value.slice(0, 10);
+    }
+
+    return "";
+  };
+
+  const formatTime = (value) => {
+    if (!value || typeof value !== "string") return "";
+    if (!value.includes("T")) return "";
+    return value.split("T")[1]?.slice(0, 5) || "";
+  };
+
+  const toLocalDate = (dateStr) => {
+    if (!dateStr) return new Date();
+
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const typeLabelMap = {
+    PERSONAL: "개인",
+    TEAM: "팀",
+    COMPANY: "전사",
+    HOLIDAY: "공휴일",
+    VACATION: "휴가",
+  };
+
+  const normalizeSchedule = (schedule) => {
+    const start = schedule.startDatetime || schedule.startDateTime;
+    const end = schedule.endDatetime || schedule.endDateTime;
+
+    return {
+      id: schedule.scheduleId,
+      title: schedule.title,
+      description: schedule.content,
+      date: formatDate(start),
+      endDate: formatDate(end),
+      startTime: formatTime(start),
+      endTime: formatTime(end),
+      type: schedule.isHoliday
+        ? "공휴일"
+        : typeLabelMap[schedule.scheduleType] || "개인",
+      raw: schedule,
+    };
+  };
+
+  useEffect(() => {
+    const loadSchedules = async () => {
+      try {
+        const data = await scheduleApi.getMonthlySchedules();
+        const normalized = Array.isArray(data)
+          ? data.map(normalizeSchedule)
+          : [];
+
+        setCalendarEvents(normalized);
+      } catch (error) {
+        console.error("대시보드 일정 조회 실패:", error);
+      }
+    };
+
+    loadSchedules();
+  }, []);
 
   const loginUser =
     currentUser || {
@@ -81,21 +148,32 @@ export function DashboardPage() {
   }
 
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const formattedDate = `${today.getFullYear()}년 ${
     today.getMonth() + 1
   }월 ${today.getDate()}일`;
   const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][today.getDay()];
-  const todayStr = today.toISOString().split("T")[0];
+
+  const todayStr = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
 
   const todayEvents = calendarEvents.filter((event) => event.date === todayStr);
 
   const upcomingEvents = calendarEvents
     .filter((event) => {
-      const eventDate = new Date(event.date);
+      const eventDate = toLocalDate(event.date);
+      eventDate.setHours(0, 0, 0, 0);
+
       const diffTime = eventDate.getTime() - today.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
       return diffDays >= 0 && diffDays <= 7;
     })
+    .sort((a, b) => toLocalDate(a.date) - toLocalDate(b.date))
     .slice(0, 5);
 
   const recentNotices = notices.slice(0, 5);
@@ -123,33 +201,35 @@ export function DashboardPage() {
     (emp) => emp.status !== "오프라인"
   ).length;
 
-  const getDatesWithEvents = () => {
-    const dates = new Set();
+  const personalDates = useMemo(() => {
+    return calendarEvents
+      .filter((event) => event.type === "개인")
+      .map((event) => toLocalDate(event.date));
+  }, [calendarEvents]);
 
-    calendarEvents.forEach((event) => {
-      if (event.type !== "공휴일") {
-        dates.add(event.date);
-      }
-    });
+  const teamDates = useMemo(() => {
+    return calendarEvents
+      .filter((event) => event.type === "팀")
+      .map((event) => toLocalDate(event.date));
+  }, [calendarEvents]);
 
-    return Array.from(dates).map((dateStr) => {
-      const [year, month, day] = dateStr.split("-").map(Number);
-      return new Date(year, month - 1, day);
-    });
-  };
+  const companyDates = useMemo(() => {
+    return calendarEvents
+      .filter((event) => event.type === "전사")
+      .map((event) => toLocalDate(event.date));
+  }, [calendarEvents]);
 
-  const datesWithEvents = getDatesWithEvents();
+  const vacationDates = useMemo(() => {
+    return calendarEvents
+      .filter((event) => event.type === "휴가")
+      .map((event) => toLocalDate(event.date));
+  }, [calendarEvents]);
 
-  const getHolidayDates = () => {
+  const holidayDates = useMemo(() => {
     return calendarEvents
       .filter((event) => event.type === "공휴일")
-      .map((event) => {
-        const [year, month, day] = event.date.split("-").map(Number);
-        return new Date(year, month - 1, day);
-      });
-  };
-
-  const holidayDates = getHolidayDates();
+      .map((event) => toLocalDate(event.date));
+  }, [calendarEvents]);
 
   const getSelectedDateEvents = () => {
     if (!selectedDate) return [];
@@ -251,7 +331,9 @@ export function DashboardPage() {
                 <p className={cn("text-2xl font-bold mt-2", textMain)}>
                   {recentNotices.length}개
                 </p>
-                <p className={cn("text-xs mt-1", textMuted)}>새로운 공지사항</p>
+                <p className={cn("text-xs mt-1", textMuted)}>
+                  새로운 공지사항
+                </p>
               </div>
 
               <div className="size-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -349,36 +431,41 @@ export function DashboardPage() {
           <CardContent>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="flex justify-center">
-			  <CalendarComp
-			    mode="single"
-			    selected={selectedDate}
-			    onSelect={setSelectedDate}
-			    className={cn(
-			      "rounded-md border text-base",
-			      isDark ? "bg-zinc-700 border-zinc-500 text-zinc-100" : ""
-			    )}
-			    classNames={{
-			      months:
-			        "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-			      month: "space-y-4",
-			      caption: "flex justify-center pt-1 relative items-center",
-			      caption_label: "text-lg font-medium",
-			      nav: "space-x-1 flex items-center",
-			      nav_button:
-			        "h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100",
-			      table: "w-full border-collapse space-y-1",
-			      head_row: "flex",
-			      head_cell: cn(
-			        "rounded-md w-10 font-normal text-sm",
-			        isDark ? "text-zinc-300" : "text-gray-500"
-			      ),
-			      row: "flex w-full mt-2",
-			      cell: "h-10 w-10 text-center text-sm p-0 relative",
-			      day: "h-10 w-10 p-0 font-normal",
-			    }}
-			    datesWithEvents={datesWithEvents}
-			    holidayDates={holidayDates}
-			  />
+                <CalendarComp
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(selected) => {
+                    if (selected) setSelectedDate(selected);
+                  }}
+                  className={cn(
+                    "rounded-md border text-base",
+                    isDark ? "bg-zinc-700 border-zinc-500 text-zinc-100" : ""
+                  )}
+                  classNames={{
+                    months:
+                      "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                    month: "space-y-4",
+                    caption: "flex justify-center pt-1 relative items-center",
+                    caption_label: "text-lg font-medium",
+                    nav: "space-x-1 flex items-center",
+                    nav_button:
+                      "h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100",
+                    table: "w-full border-collapse space-y-1",
+                    head_row: "flex",
+                    head_cell: cn(
+                      "rounded-md w-10 font-normal text-sm",
+                      isDark ? "text-zinc-300" : "text-gray-500"
+                    ),
+                    row: "flex w-full mt-2",
+                    cell: "h-10 w-10 text-center text-sm p-0 relative",
+                    day: "h-10 w-10 p-0 font-normal",
+                  }}
+                  personalDates={personalDates}
+                  teamDates={teamDates}
+                  companyDates={companyDates}
+                  vacationDates={vacationDates}
+                  holidayDates={holidayDates}
+                />
               </div>
 
               <div className="space-y-3">
@@ -509,9 +596,7 @@ export function DashboardPage() {
                     )}
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-xs">
-                        {event.type}
-                      </Badge>
+                      {getEventTypeBadge(event.type)}
 
                       {event.startTime && event.endTime && (
                         <span className={cn("text-xs", textSub)}>
@@ -564,9 +649,7 @@ export function DashboardPage() {
                   )}
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                      {event.type}
-                    </Badge>
+                    {getEventTypeBadge(event.type)}
 
                     <span className={cn("text-xs", textMuted)}>
                       {event.date}
@@ -595,3 +678,5 @@ export function DashboardPage() {
     </div>
   );
 }
+
+export default DashboardPage;
