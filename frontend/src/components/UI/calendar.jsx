@@ -15,34 +15,41 @@ function Calendar({
   companyDates = [],
   vacationDates = [],
   holidayDates = [],
+  recommendedDates = [],
   underlineDate,
   ...props
 }) {
-	const modifiers = {
-	  personal: personalDates || [],
-	  team: teamDates || [],
-	  company: companyDates || [],
-	  vacation: vacationDates || [],
-	  holiday: holidayDates || [],
+  const modifiers = {
+    personal: personalDates || [],
+    team: teamDates || [],
+    company: companyDates || [],
+    vacation: vacationDates || [],
+    holiday: holidayDates || [],
 
-	  underline: underlineDate ? [underlineDate] : [],
+    // 추천 휴가 카드를 눌렀을 때 실제 휴가 사용일만 하늘색 표시
+    recommended: recommendedDates || [],
 
-	  saturday: (date) => date.getDay() === 6,
-	  sunday: (date) => date.getDay() === 0,
-	};
+    underline: underlineDate ? [underlineDate] : [],
 
-	const modifiersClassNames = {
-	  personal: "bg-purple-100 text-purple-900 font-semibold",
-	  team: "bg-blue-100 text-blue-900 font-semibold",
-	  company: "bg-green-100 text-green-900 font-semibold",
-	  vacation: "bg-orange-100 text-orange-900 font-semibold",
-	  holiday: "bg-red-100 text-red-700 font-semibold",
+    saturday: (date) => date.getDay() === 6,
+    sunday: (date) => date.getDay() === 0,
+  };
 
-	  saturday: "text-blue-600",
-	  sunday: "text-red-600",
+  const modifiersClassNames = {
+    personal: "bg-purple-100 text-purple-900 font-semibold",
+    team: "bg-blue-100 text-blue-900 font-semibold",
+    company: "bg-green-100 text-green-900 font-semibold",
+    vacation: "bg-orange-100 text-orange-900 font-semibold",
+    holiday: "bg-red-100 text-red-700 font-semibold",
 
-	  underline: "border-b-4 border-gray-900 rounded-none font-bold",
-	};
+    recommended:
+      "!bg-sky-100 !text-sky-900 hover:!bg-sky-100 hover:!text-sky-900 font-bold",
+
+    saturday: "text-blue-600",
+    sunday: "text-red-600",
+
+    underline: "border-b-4 border-gray-900 rounded-none font-bold",
+  };
 
   return (
     <DayPicker
