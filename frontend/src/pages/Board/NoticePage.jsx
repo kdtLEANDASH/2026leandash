@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell, Pin, Search as SearchIcon, Plus, Heart } from "lucide-react";
+import { Bell, Pin, Search as SearchIcon, Plus, Heart, HelpCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/UI/card";
 import { Input } from "@/components/UI/input";
 import { Badge } from "@/components/UI/badge";
@@ -114,6 +114,13 @@ export function NoticePage() {
           </Link>
 
           {/* 마음의 편지 */}
+          <Link to="/inquiry" className={cn("flex items-center gap-3 px-4 py-3 rounded-lg transition-colors", location.pathname === "/inquiry"
+            ? "bg-blue-50 text-blue-600 font-medium"
+            : "text-gray-700 hover:bg-gray-100")}>
+            <HelpCircle className="size-5"/>
+            <span>문의</span>
+          </Link>
+
           <Link to="/heart-letter" className={cn("flex items-center gap-3 px-4 py-3 rounded-lg transition-colors", location.pathname === "/heart-letter"
             ? "bg-blue-50 text-blue-600 font-medium"
             : "text-gray-700 hover:bg-gray-100")}>

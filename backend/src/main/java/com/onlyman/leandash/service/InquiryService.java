@@ -67,20 +67,16 @@ public class InquiryService {
     }
 
     public List<InquiryAdminListResponse> getDepartmentInquiries(Long currentUserId) {
-        User admin = getAdminUserEntity(currentUserId);
+        getAdminUserEntity(currentUserId);
 
-        return inquiryRepository.findByDepartment_DepartmentIdOrderByCreatedAtDesc(admin.getDepartment().getDepartmentId()).stream()
+        return inquiryRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(InquiryAdminListResponse::from)
                 .toList();
     }
 
     public InquiryResponse getDepartmentInquiry(Long currentUserId, Long inquiryId) {
-        User admin = getAdminUserEntity(currentUserId);
+        getAdminUserEntity(currentUserId);
         Inquiry inquiry = getInquiryEntity(inquiryId);
-
-        if (!inquiry.getDepartment().getDepartmentId().equals(admin.getDepartment().getDepartmentId())) {
-            throw new IllegalArgumentException("you can only view inquiries from your department");
-        }
 
         return toInquiryResponse(inquiry);
     }
@@ -89,10 +85,6 @@ public class InquiryService {
     public InquiryResponse answerInquiry(Long currentUserId, Long inquiryId, InquiryAnswerRequest request) {
         User admin = getAdminUserEntity(currentUserId);
         Inquiry inquiry = getInquiryEntity(inquiryId);
-
-        if (!inquiry.getDepartment().getDepartmentId().equals(admin.getDepartment().getDepartmentId())) {
-            throw new IllegalArgumentException("you can only answer inquiries from your department");
-        }
 
         inquiry.answer(admin, request.getAnswerContent());
         return toInquiryResponse(inquiry);
@@ -184,8 +176,7 @@ public class InquiryService {
             return;
         }
 
-        if (user.getRoleEnum() == Role.ADMIN
-                && inquiry.getDepartment().getDepartmentId().equals(user.getDepartment().getDepartmentId())) {
+        if (user.getRoleEnum() == Role.ADMIN) {
             return;
         }
 
