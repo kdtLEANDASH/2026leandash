@@ -70,3 +70,11 @@
 
 ## 6. Document Links
 - [요구사항 정의서](https://www.notion.so/33bf734340a780589465f3730cea7bbe)
+
+## 7. 업무 및 개발 보고서
+
+2025/05/12
+https://docs.google.com/document/d/181nX9Mbo_HZ8Ni526vTQqQldit-ByTE_MVfearJb74E/edit?tab=t.0
+
+2025/05/18
+https://docs.google.com/document/d/1647HDsaXE1IkLJBF3rzMB6G0zjdmLEBuboC_HCUYeVM/edit?tab=t.0

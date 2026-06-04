@@ -11,4 +11,8 @@ public interface FileAttachmentRepository extends JpaRepository<FileAttachment, 
     List<FileAttachment> findByInquiry_InquiryIdOrderByCreatedAtAsc(Long inquiryId);
 
     Optional<FileAttachment> findByFileIdAndInquiry_InquiryId(Long fileId, Long inquiryId);
+
+    List<FileAttachment> findByApproval_ApprovalIdOrderByCreatedAtAsc(Long approvalId);
+
+    Optional<FileAttachment> findByFileIdAndApproval_ApprovalId(Long fileId, Long approvalId);
 }
