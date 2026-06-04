@@ -10,4 +10,6 @@ public interface ApprovalRepository extends JpaRepository<Approval, Long> {
     List<Approval> findByUser_UserIdOrderByCreatedAtDesc(Long userId);
 
     List<Approval> findByDepartment_DepartmentIdOrderByCreatedAtDesc(Long departmentId);
+
+    List<Approval> findAllByOrderByCreatedAtDesc();
 }

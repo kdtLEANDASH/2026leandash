@@ -72,9 +72,9 @@ public class ApprovalService {
     }
 
     public List<ApprovalAdminListResponse> getDepartmentApprovals(Long currentUserId) {
-        User admin = getAdminUserEntity(currentUserId);
+        getAdminUserEntity(currentUserId);
 
-        return approvalRepository.findByDepartment_DepartmentIdOrderByCreatedAtDesc(admin.getDepartment().getDepartmentId()).stream()
+        return approvalRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(ApprovalAdminListResponse::from)
                 .toList();
     }
@@ -195,8 +195,8 @@ public class ApprovalService {
     }
 
     private void validateDepartmentApproval(User admin, Approval approval) {
-        if (!approval.getDepartment().getDepartmentId().equals(admin.getDepartment().getDepartmentId())) {
-            throw new IllegalArgumentException("you can only manage approvals from your department");
+        if (admin.getRoleEnum() != Role.ADMIN) {
+            throw new IllegalArgumentException("only admins can manage approvals");
         }
     }
 
@@ -211,8 +211,7 @@ public class ApprovalService {
             return;
         }
 
-        if (user.getRoleEnum() == Role.ADMIN
-                && approval.getDepartment().getDepartmentId().equals(user.getDepartment().getDepartmentId())) {
+        if (user.getRoleEnum() == Role.ADMIN) {
             return;
         }
 
