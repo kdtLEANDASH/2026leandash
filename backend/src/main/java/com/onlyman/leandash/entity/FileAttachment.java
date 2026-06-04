@@ -55,4 +55,8 @@ public class FileAttachment extends BaseTimeEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "inquiry_id")
     private Inquiry inquiry;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approval_id")
+    private Approval approval;
 }
