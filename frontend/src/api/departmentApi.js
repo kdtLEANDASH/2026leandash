@@ -5,3 +5,9 @@ export function getDepartmentsApi() {
     method: "GET",
   });
 }
+
+export function getDepartmentUsersApi(departmentId) {
+  return apiRequest(`/api/departments/${departmentId}/users`, {
+    method: "GET",
+  });
+}
