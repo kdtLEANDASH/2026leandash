@@ -6,7 +6,7 @@ import { Calendar as CalendarComp } from "@/components/UI/calendar";
 
 export default function VacationInfoPage() {
   const {
-    isHrAdmin,
+    currentUser,
     vacationBalance,
     selectedDate,
     setSelectedDate,
@@ -14,6 +14,8 @@ export default function VacationInfoPage() {
     visibleApprovedVacations = [],
     holidayDates = [],
   } = useOutletContext();
+
+  const currentUserId = currentUser?.userId || currentUser?.id;
 
   const toLocalDate = (dateStr) => {
     if (!dateStr) return new Date();
@@ -31,6 +33,36 @@ export default function VacationInfoPage() {
 
     return `${year}-${month}-${day}`;
   };
+
+  const getEventBoxClass = (type) => {
+    const map = {
+      개인: "bg-purple-50 border-purple-200 text-purple-800",
+      팀: "bg-blue-50 border-blue-200 text-blue-800",
+      전사: "bg-green-50 border-green-200 text-green-800",
+      공휴일: "bg-red-50 border-red-200 text-red-800",
+      휴가: "bg-orange-50 border-orange-200 text-orange-800",
+    };
+
+    return map[type] || "bg-white border-gray-200 text-gray-800";
+  };
+
+  const getSubTextClass = (type) => {
+    const map = {
+      개인: "text-purple-700",
+      팀: "text-blue-700",
+      전사: "text-green-700",
+      공휴일: "text-red-700",
+      휴가: "text-orange-700",
+    };
+
+    return map[type] || "text-gray-500";
+  };
+
+  const myApprovedVacations = useMemo(() => {
+    return visibleApprovedVacations.filter(
+      (vacation) => String(vacation.employeeId) === String(currentUserId)
+    );
+  }, [visibleApprovedVacations, currentUserId]);
 
   const personalDates = useMemo(() => {
     return calendarEvents
@@ -51,11 +83,22 @@ export default function VacationInfoPage() {
   }, [calendarEvents]);
 
   const vacationDates = useMemo(() => {
-    return visibleApprovedVacations
-      .map((vacation) => vacation.startDate)
-      .filter(Boolean)
-      .map((dateStr) => toLocalDate(dateStr));
-  }, [visibleApprovedVacations]);
+    const result = [];
+
+    myApprovedVacations.forEach((vacation) => {
+      if (!vacation.startDate || !vacation.endDate) return;
+
+      const current = toLocalDate(vacation.startDate);
+      const end = toLocalDate(vacation.endDate);
+
+      while (current <= end) {
+        result.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+      }
+    });
+
+    return result;
+  }, [myApprovedVacations]);
 
   const selectedDateData = useMemo(() => {
     if (!selectedDate) return { events: [], vacations: [] };
@@ -64,20 +107,12 @@ export default function VacationInfoPage() {
 
     return {
       events: calendarEvents.filter((event) => event.date === dateStr),
-      vacations: visibleApprovedVacations.filter(
+      vacations: myApprovedVacations.filter(
         (vacation) =>
           vacation.startDate <= dateStr && vacation.endDate >= dateStr
       ),
     };
-  }, [selectedDate, calendarEvents, visibleApprovedVacations]);
-
-  if (isHrAdmin) {
-    return (
-      <div className="text-sm text-gray-500">
-        인사팀은 휴가 신청 목록을 이용해주세요.
-      </div>
-    );
-  }
+  }, [selectedDate, calendarEvents, myApprovedVacations]);
 
   return (
     <div className="space-y-6">
@@ -142,11 +177,13 @@ export default function VacationInfoPage() {
               {selectedDateData.events.map((event) => (
                 <div
                   key={event.id}
-                  className="p-3 bg-white border rounded-lg text-sm"
+                  className={`p-3 border rounded-lg text-sm ${getEventBoxClass(
+                    event.type
+                  )}`}
                 >
-                  <div className="font-medium text-gray-900">{event.title}</div>
+                  <div className="font-medium">{event.title}</div>
 
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className={`text-xs mt-1 ${getSubTextClass(event.type)}`}>
                     {event.type}
                     {event.startTime && event.endTime
                       ? ` · ${event.startTime} - ${event.endTime}`
@@ -154,7 +191,9 @@ export default function VacationInfoPage() {
                   </div>
 
                   {event.description && (
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div
+                      className={`text-xs mt-1 ${getSubTextClass(event.type)}`}
+                    >
                       {event.description}
                     </div>
                   )}
@@ -164,9 +203,11 @@ export default function VacationInfoPage() {
               {selectedDateData.vacations.map((vacation) => (
                 <div
                   key={vacation.id}
-                  className="p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm"
+                  className={`p-3 border rounded-lg text-sm ${getEventBoxClass(
+                    "휴가"
+                  )}`}
                 >
-                  <div className="font-medium text-orange-800">
+                  <div className="font-medium">
                     {vacation.employeeName} · {vacation.type}
                   </div>
 
