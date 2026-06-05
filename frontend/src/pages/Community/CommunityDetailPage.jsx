@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/UI/select";
 import { useAppContext } from "@/store/AppProvider";
+import { cn } from "@/components/UI/utils";
 
 const STORAGE_KEY = "community_posts";
 const COMMENT_KEY = "community_comments";
@@ -31,22 +32,43 @@ const COMMENT_KEY = "community_comments";
 export function CommunityDetailPage() {
   const navigate = useNavigate();
   const { postId } = useParams();
-  const { currentUser } = useAppContext();
+
+  const { currentUser, customSettings } = useAppContext();
+  const isDark = customSettings?.darkMode;
 
   const canWriteNotice =
-  currentUser?.role === "최고관리자" || currentUser?.role === "팀장";
+    currentUser?.role === "최고관리자" || currentUser?.role === "팀장";
 
   const [posts, setPosts] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
+
+    if (!saved) return [];
+
+    try {
+      return JSON.parse(saved);
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+      return [];
+    }
   });
 
   const [comments, setComments] = useState(() => {
     const saved = localStorage.getItem(COMMENT_KEY);
-    return saved ? JSON.parse(saved) : {};
+
+    if (!saved) return {};
+
+    try {
+      return JSON.parse(saved);
+    } catch {
+      localStorage.removeItem(COMMENT_KEY);
+      return {};
+    }
   });
 
   const [commentText, setCommentText] = useState("");
+  const [currentCommentPage, setCurrentCommentPage] = useState(1);
+  const commentsPerPage = 5;
+
   const [isEditing, setIsEditing] = useState(false);
   const [editCategory, setEditCategory] = useState("잡담");
   const [editTitle, setEditTitle] = useState("");
@@ -61,11 +83,71 @@ export function CommunityDetailPage() {
 
   const postComments = comments[postId] || [];
 
-  const isPostAuthor = !!currentUser && post && currentUser.name === post.author;
-  const isAdmin = currentUser?.role === "최고관리자";
+  const totalCommentPages = Math.max(
+    1,
+    Math.ceil(postComments.length / commentsPerPage)
+  );
 
-  const canEditPost = isPostAuthor;
-  const canDeletePost = isPostAuthor || isAdmin;
+  const paginatedComments = postComments.slice(
+    (currentCommentPage - 1) * commentsPerPage,
+    currentCommentPage * commentsPerPage
+  );
+
+  const isAdmin = currentUser?.role === "최고관리자";
+  const userDepartment = currentUser?.department;
+  const postBoard = post?.board || "전체";
+
+  const canAccessPost =
+    postBoard === "전체" || isAdmin || postBoard === userDepartment;
+
+  const isPostAuthor = !!currentUser && post && currentUser.name === post.author;
+
+  const canEditPost = isPostAuthor && canAccessPost;
+  const canDeletePost = (isPostAuthor || isAdmin) && canAccessPost;
+
+  const cardClass = isDark
+    ? "bg-[#35353d] border-[#5c5c73] text-white"
+    : "bg-white border-gray-200";
+
+  const innerBoxClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-zinc-100"
+    : "bg-white border-gray-200 text-gray-800";
+
+  const commentBoxClass = isDark
+    ? "bg-[#48484f] border-[#5c5c73] text-white"
+    : "bg-white border-gray-200 text-gray-800";
+
+  const inputClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white placeholder:text-zinc-400"
+    : "";
+
+  const selectContentClass = isDark
+    ? "bg-[#35353d] border-[#5c5c73] text-white"
+    : "";
+
+  const primaryButtonClass = isDark
+    ? "bg-[#5c5c73] hover:bg-[#6a6a82] text-white"
+    : "bg-blue-600 hover:bg-blue-700 text-white";
+
+  const outlineButtonClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white hover:bg-[#48484f]"
+    : "";
+
+  const deleteButtonClass = isDark
+    ? "border-red-400 text-red-300 hover:bg-red-950"
+    : "text-red-600 hover:text-red-700 hover:bg-red-50";
+
+  const textMainClass = isDark ? "text-white" : "text-gray-900";
+  const textSubClass = isDark ? "text-zinc-300" : "text-gray-500";
+  const textMutedClass = isDark ? "text-zinc-400" : "text-gray-500";
+
+  const getAuthorLabel = (author, ownLabel = "내가 쓴 글") => {
+    if (author === currentUser?.name) {
+      return ownLabel;
+    }
+
+    return "익명";
+  };
 
   useEffect(() => {
     localStorage.setItem(COMMENT_KEY, JSON.stringify(comments));
@@ -75,6 +157,18 @@ export function CommunityDetailPage() {
     if (!postId) return;
 
     const id = Number(postId);
+    const targetPost = posts.find((item) => item.id === id);
+
+    if (!targetPost) return;
+
+    const targetBoard = targetPost.board || "전체";
+    const isAllowed =
+      targetBoard === "전체" ||
+      currentUser?.role === "최고관리자" ||
+      targetBoard === currentUser?.department;
+
+    if (!isAllowed) return;
+
     const updated = posts.map((item) =>
       item.id === id ? { ...item, views: (item.views || 0) + 1 } : item
     );
@@ -91,6 +185,16 @@ export function CommunityDetailPage() {
       setEditContent(post.content);
     }
   }, [post]);
+
+  useEffect(() => {
+    if (currentCommentPage > totalCommentPages) {
+      setCurrentCommentPage(totalCommentPages);
+    }
+  }, [currentCommentPage, totalCommentPages]);
+
+  useEffect(() => {
+    setCurrentCommentPage(1);
+  }, [postId]);
 
   const getTypeBadge = (type) => {
     if (type === "공지") {
@@ -117,6 +221,11 @@ export function CommunityDetailPage() {
   };
 
   const handleCommentSubmit = () => {
+    if (!canAccessPost) {
+      alert("이 게시글에는 댓글을 작성할 수 없습니다.");
+      return;
+    }
+
     if (!commentText.trim()) {
       alert("댓글 내용을 입력해주세요.");
       return;
@@ -137,6 +246,13 @@ export function CommunityDetailPage() {
     setComments(updatedComments);
     setCommentText("");
 
+    const nextTotalPages = Math.max(
+      1,
+      Math.ceil(updatedComments[postId].length / commentsPerPage)
+    );
+
+    setCurrentCommentPage(nextTotalPages);
+
     const updatedPosts = posts.map((item) =>
       item.id === Number(postId)
         ? { ...item, comments: (item.comments || 0) + 1 }
@@ -148,6 +264,16 @@ export function CommunityDetailPage() {
   };
 
   const handleEditSave = () => {
+    if (!canAccessPost) {
+      alert("이 게시글은 수정할 수 없습니다.");
+      return;
+    }
+
+    if (!editTitle.trim() || !editContent.trim()) {
+      alert("제목과 내용을 입력해주세요.");
+      return;
+    }
+
     if (editCategory === "공지" && !canWriteNotice) {
       alert("일반직원은 공지글로 수정할 수 없습니다.");
       return;
@@ -177,6 +303,11 @@ export function CommunityDetailPage() {
   };
 
   const handleDeletePost = () => {
+    if (!canDeletePost) {
+      alert("이 게시글은 삭제할 수 없습니다.");
+      return;
+    }
+
     const ok = window.confirm("이 게시글을 삭제할까요?");
     if (!ok) return;
 
@@ -260,11 +391,40 @@ export function CommunityDetailPage() {
   if (!post) {
     return (
       <div className="p-6 max-w-5xl mx-auto">
-        <Card>
+        <Card className={cn(cardClass)}>
           <CardContent className="py-16 text-center">
-            <p className="text-gray-500 mb-4">존재하지 않는 게시글입니다.</p>
-            <Button variant="outline" onClick={() => navigate("/community")}>
+            <p className={cn("mb-4", textMutedClass)}>
+              존재하지 않는 게시글입니다.
+            </p>
+
+            <Button
+              variant="outline"
+              onClick={() => navigate("/community")}
+              className={outlineButtonClass}
+            >
               목록으로 돌아가기
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!canAccessPost) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <Card className={cn(cardClass)}>
+          <CardContent className="py-16 text-center">
+            <p className={cn("mb-4", textMutedClass)}>
+              이 게시판의 글을 볼 수 없습니다.
+            </p>
+
+            <Button
+              variant="outline"
+              onClick={() => navigate("/community")}
+              className={outlineButtonClass}
+            >
+              커뮤니티로 돌아가기
             </Button>
           </CardContent>
         </Card>
@@ -275,62 +435,100 @@ export function CommunityDetailPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-2xl font-semibold text-gray-900">게시글 상세</h2>
+        <h2 className={cn("text-2xl font-semibold", textMainClass)}>
+          게시글 상세
+        </h2>
+
         <div className="flex gap-2">
           {!isEditing && (
             <>
               {canEditPost && (
-                <Button variant="outline" onClick={() => setIsEditing(true)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditing(true)}
+                  className={outlineButtonClass}
+                >
                   <Pencil className="size-4 mr-2" />
                   수정
                 </Button>
               )}
 
               {canDeletePost && (
-                <Button variant="outline" onClick={handleDeletePost}>
+                <Button
+                  variant="outline"
+                  onClick={handleDeletePost}
+                  className={deleteButtonClass}
+                >
                   <Trash2 className="size-4 mr-2" />
                   삭제
                 </Button>
               )}
             </>
           )}
-          <Button variant="outline" onClick={() => navigate("/community")}>
+
+          <Button
+            variant="outline"
+            onClick={() => navigate("/community")}
+            className={outlineButtonClass}
+          >
             <ArrowLeft className="size-4 mr-2" />
             목록으로
           </Button>
         </div>
       </div>
 
-      <Card>
+      <Card className={cn(cardClass)}>
         <CardHeader className="space-y-4">
           {!isEditing ? (
             <>
               <div className="flex items-center gap-2 flex-wrap">
                 {getTypeBadge(post.type)}
+
                 <Badge className="bg-red-50 text-red-600 hover:bg-red-50">
                   {post.category}
                 </Badge>
+
+                <Badge
+                  className={
+                    isDark
+                      ? "bg-[#ececff] text-[#5c5c73] hover:bg-[#ececff]"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-100"
+                  }
+                >
+                  {postBoard === "전체" ? "전체 게시판" : `${postBoard} 게시판`}
+                </Badge>
               </div>
 
-              <CardTitle className="text-2xl break-words">{post.title}</CardTitle>
+              <CardTitle className={cn("text-2xl break-words", textMainClass)}>
+                {post.title}
+              </CardTitle>
 
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-500">
+              <div
+                className={cn(
+                  "flex flex-wrap items-center gap-x-5 gap-y-2 text-sm",
+                  textSubClass
+                )}
+              >
                 <span className="flex items-center gap-1">
                   <User className="size-4" />
-                  {post.author}
+                  {getAuthorLabel(post.author)}
                 </span>
+
                 <span className="flex items-center gap-1">
                   <CalendarDays className="size-4" />
                   {post.date}
                 </span>
+
                 <span className="flex items-center gap-1">
                   <Eye className="size-4" />
                   {post.views}
                 </span>
+
                 <span className="flex items-center gap-1">
                   <MessageSquare className="size-4" />
                   {post.comments}
                 </span>
+
                 {typeof post.likes === "number" && (
                   <span className="flex items-center gap-1">
                     <Flame className="size-4" />
@@ -343,11 +541,13 @@ export function CommunityDetailPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>카테고리</Label>
+
                 <Select value={editCategory} onValueChange={setEditCategory}>
-                  <SelectTrigger>
+                  <SelectTrigger className={inputClass}>
                     <SelectValue placeholder="카테고리 선택" />
                   </SelectTrigger>
-                  <SelectContent>
+
+                  <SelectContent className={selectContentClass}>
                     <SelectItem value="잡담">잡담</SelectItem>
                     <SelectItem value="사진/영상">사진/영상</SelectItem>
                     <SelectItem value="정보">정보</SelectItem>
@@ -359,28 +559,37 @@ export function CommunityDetailPage() {
 
               <div className="space-y-2">
                 <Label>제목</Label>
+
                 <Input
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   placeholder="제목을 입력하세요"
+                  className={inputClass}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label>내용</Label>
+
                 <Textarea
                   rows={10}
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   placeholder="내용을 입력하세요"
+                  className={inputClass}
                 />
               </div>
 
               <div className="flex gap-2">
-                <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleEditSave}>
+                <Button className={primaryButtonClass} onClick={handleEditSave}>
                   저장
                 </Button>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
+
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
+                  className={outlineButtonClass}
+                >
                   취소
                 </Button>
               </div>
@@ -390,7 +599,12 @@ export function CommunityDetailPage() {
 
         {!isEditing && (
           <CardContent>
-            <div className="min-h-[260px] rounded-lg border border-gray-200 bg-white p-5 whitespace-pre-line leading-7 text-gray-800">
+            <div
+              className={cn(
+                "min-h-[260px] rounded-lg border p-5 whitespace-pre-line leading-7",
+                innerBoxClass
+              )}
+            >
               {post.content}
             </div>
           </CardContent>
@@ -398,34 +612,48 @@ export function CommunityDetailPage() {
       </Card>
 
       {!isEditing && (
-        <Card>
+        <Card className={cn(cardClass)}>
           <CardHeader>
-            <CardTitle className="text-lg">댓글</CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className={cn("text-lg", textMainClass)}>
+                댓글
+              </CardTitle>
+
+              {postComments.length > 0 && (
+                <span className={cn("text-sm", textSubClass)}>
+                  총 {postComments.length}개 · {currentCommentPage}/
+                  {totalCommentPages}페이지
+                </span>
+              )}
+            </div>
           </CardHeader>
+
           <CardContent className="space-y-4">
             <div className="space-y-3">
               {postComments.length === 0 ? (
-                <div className="text-gray-500 py-6 text-center">
+                <div className={cn("py-6 text-center", textMutedClass)}>
                   아직 댓글이 없습니다.
                 </div>
               ) : (
-                postComments.map((comment) => {
+                paginatedComments.map((comment) => {
                   const canEditComment =
                     !!currentUser &&
+                    canAccessPost &&
                     (currentUser.name === comment.author ||
                       currentUser.role === "최고관리자");
 
                   return (
                     <div
                       key={comment.id}
-                      className="rounded-lg border border-gray-200 bg-white p-4"
+                      className={cn("rounded-lg border p-4", commentBoxClass)}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div>
-                          <span className="font-medium text-gray-900">
-                            {comment.author}
+                          <span className={cn("font-medium", textMainClass)}>
+                            {getAuthorLabel(comment.author, "내 댓글")}
                           </span>
-                          <span className="text-sm text-gray-500 ml-3">
+
+                          <span className={cn("text-sm ml-3", textSubClass)}>
                             {comment.date}
                           </span>
                         </div>
@@ -436,13 +664,16 @@ export function CommunityDetailPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => startEditComment(comment)}
+                              className={outlineButtonClass}
                             >
                               수정
                             </Button>
+
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => deleteComment(comment.id)}
+                              className={deleteButtonClass}
                             >
                               삭제
                             </Button>
@@ -455,27 +686,38 @@ export function CommunityDetailPage() {
                           <Textarea
                             rows={4}
                             value={editingCommentText}
-                            onChange={(e) => setEditingCommentText(e.target.value)}
+                            onChange={(e) =>
+                              setEditingCommentText(e.target.value)
+                            }
+                            className={inputClass}
                           />
+
                           <div className="flex gap-2 justify-end">
                             <Button
                               size="sm"
-                              className="bg-blue-600 hover:bg-blue-700"
+                              className={primaryButtonClass}
                               onClick={() => saveEditComment(comment.id)}
                             >
                               저장
                             </Button>
+
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={cancelEditComment}
+                              className={outlineButtonClass}
                             >
                               취소
                             </Button>
                           </div>
                         </div>
                       ) : (
-                        <p className="text-gray-700 whitespace-pre-wrap">
+                        <p
+                          className={cn(
+                            "whitespace-pre-wrap",
+                            isDark ? "text-zinc-200" : "text-gray-700"
+                          )}
+                        >
                           {comment.content}
                         </p>
                       )}
@@ -485,22 +727,78 @@ export function CommunityDetailPage() {
               )}
             </div>
 
-            <div className="space-y-3">
-              <Textarea
-                rows={4}
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                placeholder="댓글을 입력하세요"
-              />
-              <div className="flex justify-end">
+            {postComments.length > commentsPerPage && (
+              <div className="flex items-center justify-center gap-2 pt-2">
                 <Button
-                  className="bg-blue-600 hover:bg-blue-700"
-                  onClick={handleCommentSubmit}
+                  variant="outline"
+                  size="sm"
+                  disabled={currentCommentPage === 1}
+                  onClick={() =>
+                    setCurrentCommentPage((page) => Math.max(1, page - 1))
+                  }
+                  className={outlineButtonClass}
                 >
-                  댓글 등록
+                  이전
+                </Button>
+
+                {Array.from(
+                  { length: totalCommentPages },
+                  (_, index) => index + 1
+                ).map((page) => (
+                  <Button
+                    key={page}
+                    size="sm"
+                    variant={
+                      currentCommentPage === page ? "default" : "outline"
+                    }
+                    onClick={() => setCurrentCommentPage(page)}
+                    className={cn(
+                      "min-w-9",
+                      currentCommentPage === page
+                        ? primaryButtonClass
+                        : outlineButtonClass
+                    )}
+                  >
+                    {page}
+                  </Button>
+                ))}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentCommentPage === totalCommentPages}
+                  onClick={() =>
+                    setCurrentCommentPage((page) =>
+                      Math.min(totalCommentPages, page + 1)
+                    )
+                  }
+                  className={outlineButtonClass}
+                >
+                  다음
                 </Button>
               </div>
-            </div>
+            )}
+
+            {canAccessPost && (
+              <div className="space-y-3">
+                <Textarea
+                  rows={4}
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="댓글을 입력하세요"
+                  className={inputClass}
+                />
+
+                <div className="flex justify-end">
+                  <Button
+                    className={primaryButtonClass}
+                    onClick={handleCommentSubmit}
+                  >
+                    댓글 등록
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

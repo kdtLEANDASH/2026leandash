@@ -16,16 +16,21 @@ import VacationStatusPage from "@/pages/Vacation/VacationStatusPage";
 import { CalendarPage } from "@/pages/Calendar/CalendarPage";
 import { ChatPage } from "@/pages/Board/ChatPage";
 import { EvaluationPage } from "@/pages/Evaluation/EvaluationPage";
-import { HeartLetterPage } from "@/pages/SecretLetter/SecretLetterPage";
 import { ApprovalPage } from "@/pages/Approval/ApprovalPage";
-import { NoticePage } from "@/pages/Board/NoticePage";
 import { RegistrationApprovalPage } from "@/pages/Registration/RegistrationApprovalPage";
 import { SearchPage } from "@/pages/Search/SearchPage";
-import { InquiryPage } from "@/pages/Board/InquiryPage";
 import { ApprovalRequestPage } from "@/pages/Approval/ApprovalRequestPage";
 import { MyPage } from "@/pages/MyPage/MyPage";
+
+import BoardLayout from "@/pages/Board/BoardLayout";
+import { NoticePage } from "@/pages/Board/NoticePage";
+import { InquiryPage } from "@/pages/Board/InquiryPage";
+import { HeartLetterPage } from "@/pages/SecretLetter/SecretLetterPage";
+
 import { CommunityPage } from "@/pages/Community/CommunityPage";
+import { CommunityWritePage } from "@/pages/Community/CommunityWritePage";
 import { CommunityDetailPage } from "@/pages/Community/CommunityDetailPage";
+
 import { DocumentsPage } from "@/pages/Documents/DocumentsPage";
 
 import { LoginPage } from "@/pages/Auth/LoginPage";
@@ -39,9 +44,18 @@ export const router = createBrowserRouter([
       { index: true, Component: MainPage },
 
       { path: "dashboard", Component: DashboardPage },
-      { path: "notice", Component: NoticePage },
-      { path: "notice/:noticeId", Component: NoticePage },
       { path: "employees", Component: EmployeesPage },
+
+      {
+        path: "",
+        Component: BoardLayout,
+        children: [
+          { path: "notice", Component: NoticePage },
+          { path: "notice/:noticeId", Component: NoticePage },
+          { path: "inquiry", Component: InquiryPage },
+          { path: "heart-letter", Component: HeartLetterPage },
+        ],
+      },
 
       {
         path: "vacation",
@@ -58,20 +72,19 @@ export const router = createBrowserRouter([
 
       { path: "calendar", Component: CalendarPage },
       { path: "chat", Component: ChatPage },
-      { path: "inquiry", Component: InquiryPage },
+
       { path: "approval-request", Component: ApprovalRequestPage },
       { path: "evaluation", Component: EvaluationPage },
       { path: "approval", Component: ApprovalPage },
-      { path: "heart-letter", Component: HeartLetterPage },
+
       { path: "community", Component: CommunityPage },
+      { path: "community/write", Component: CommunityWritePage },
       { path: "community/:postId", Component: CommunityDetailPage },
+
       { path: "registration-approval", Component: RegistrationApprovalPage },
       { path: "search", Component: SearchPage },
       { path: "mypage", Component: MyPage },
-	  {
-	    path: "/documents",
-	    element: <DocumentsPage />,
-	  },
+      { path: "documents", Component: DocumentsPage },
     ],
   },
 
