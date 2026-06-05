@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:classpath:application-secret.yml  # 💥 핵심: 비밀 문서 강제 호출!
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/leandash_test?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
@@ -15,3 +17,8 @@ spring:
 
 jwt:
   secret: Y2xvc2V0ZXItcHJvamVjdC1zZWNyZXQta2V5LWxlYW5kYXNoLWJhY2tlbmQtdGVzdC1rZXk=
+
+gemini:
+  api:
+    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
+    # key: ${GEMINI_API_KEY} <-- 이 줄은 이제 완전히 삭제! (secret 파일에서 가져옴)
