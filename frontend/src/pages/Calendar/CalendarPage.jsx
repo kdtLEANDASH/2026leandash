@@ -22,10 +22,15 @@ import {
   SelectValue,
 } from "@/components/UI/select";
 import { scheduleApi } from "@/api/scheduleApi";
+import { vacationApi } from "@/api/vacationApi";
+import { useAppContext } from "@/store/AppProvider";
 
 export function CalendarPage() {
+  const { currentUser } = useAppContext();
+
   const [date, setDate] = useState(new Date());
   const [events, setEvents] = useState([]);
+  const [vacations, setVacations] = useState([]);
   const [showDialog, setShowDialog] = useState(false);
   const [filterType, setFilterType] = useState("전체");
   const [loading, setLoading] = useState(false);
@@ -42,13 +47,13 @@ export function CalendarPage() {
   const selectedYear = date.getFullYear();
   const selectedMonth = date.getMonth() + 1;
 
+  const currentUserId = currentUser?.userId || currentUser?.id;
+
   const formatDate = (value) => {
     if (!value) return "";
-
     if (typeof value === "string") {
       return value.includes("T") ? value.split("T")[0] : value.slice(0, 10);
     }
-
     return "";
   };
 
@@ -59,8 +64,22 @@ export function CalendarPage() {
   };
 
   const toLocalDate = (dateStr) => {
+    if (!dateStr) return new Date();
     const [year, month, day] = dateStr.split("-").map(Number);
     return new Date(year, month - 1, day);
+  };
+
+  const calculateDays = (startDate, endDate) => {
+    if (!startDate || !endDate) return 0;
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return 0;
+    }
+
+    return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
   };
 
   const typeLabelMap = {
@@ -71,16 +90,10 @@ export function CalendarPage() {
     VACATION: "휴가",
   };
 
-  const typeValueMap = {
-    개인: "PERSONAL",
-    팀: "TEAM",
-    전사: "COMPANY",
-    공휴일: "HOLIDAY",
-    휴가: "VACATION",
-  };
-
   const normalizeEvent = (schedule) => {
-    const startDate = formatDate(schedule.startDatetime || schedule.startDateTime);
+    const startDate = formatDate(
+      schedule.startDatetime || schedule.startDateTime
+    );
     const endDate = formatDate(schedule.endDatetime || schedule.endDateTime);
 
     return {
@@ -93,9 +106,42 @@ export function CalendarPage() {
       endTime: formatTime(schedule.endDatetime || schedule.endDateTime),
       type: schedule.isHoliday
         ? "공휴일"
-        : typeLabelMap[schedule.scheduleType] || schedule.scheduleType || "개인",
+        : typeLabelMap[schedule.scheduleType] ||
+          schedule.scheduleType ||
+          "개인",
       color: schedule.color,
       raw: schedule,
+    };
+  };
+
+  const normalizeVacation = (vacation) => {
+    const userId =
+      vacation.userId ||
+      vacation.employeeId ||
+      vacation.user?.userId ||
+      vacation.user?.id;
+
+    return {
+      id: vacation.vacationId || vacation.id,
+      employeeId: userId,
+      employeeName:
+        vacation.employeeName ||
+        vacation.userName ||
+        vacation.user?.userName ||
+        vacation.user?.name ||
+        currentUser?.userName ||
+        currentUser?.name ||
+        "내",
+      title: "내 휴가",
+      type: "휴가",
+      startDate: vacation.startDate,
+      endDate: vacation.endDate,
+      reason: vacation.reason || "",
+      status: vacation.status || "PENDING",
+      days:
+        vacation.days ||
+        calculateDays(vacation.startDate, vacation.endDate),
+      raw: vacation,
     };
   };
 
@@ -108,21 +154,49 @@ export function CalendarPage() {
         selectedMonth
       );
 
-      const normalized = Array.isArray(data)
-        ? data.map(normalizeEvent)
-        : [];
+      const normalized = Array.isArray(data) ? data.map(normalizeEvent) : [];
 
       setEvents(normalized);
     } catch (error) {
-      console.error(error);
+      console.error("일정 조회 실패:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchVacations = async () => {
+    try {
+      const data = await vacationApi.getAll();
+      const normalized = Array.isArray(data)
+        ? data.map(normalizeVacation)
+        : [];
+
+      setVacations(normalized);
+    } catch (error) {
+      console.error("휴가 조회 실패:", error.response?.data || error);
+      setVacations([]);
     }
   };
 
   useEffect(() => {
     fetchSchedules();
   }, [selectedYear, selectedMonth]);
+
+  useEffect(() => {
+    fetchVacations();
+  }, [currentUserId]);
+
+  const myApprovedVacations = useMemo(() => {
+    return vacations.filter((vacation) => {
+      const isApproved =
+        vacation.status === "APPROVED" || vacation.status === "승인";
+
+      return (
+        isApproved &&
+        String(vacation.employeeId) === String(currentUserId)
+      );
+    });
+  }, [vacations, currentUserId]);
 
   const handleAddEvent = async () => {
     if (!formData.title || !formData.date) {
@@ -134,20 +208,20 @@ export function CalendarPage() {
       const startTime = formData.startTime || "00:00";
       const endTime = formData.endTime || "23:59";
 
-	  const payload = {
-	    userId: 1,
-	    title: formData.title,
-	    content: formData.description,
-	    startDatetime: `${formData.date}T${startTime}:00`,
-	    endDatetime: `${formData.date}T${endTime}:00`,
-	    scheduleType: formData.type,
-	    isAllDay: !formData.startTime && !formData.endTime,
-	    departmentId: null,
-	    isOfficial: formData.type === "COMPANY",
-	    isHoliday: formData.type === "HOLIDAY",
-	    color: null,
-	    remindAt: null,
-	  };
+      const payload = {
+        userId: currentUserId || 1,
+        title: formData.title,
+        content: formData.description,
+        startDatetime: `${formData.date}T${startTime}:00`,
+        endDatetime: `${formData.date}T${endTime}:00`,
+        scheduleType: formData.type,
+        isAllDay: !formData.startTime && !formData.endTime,
+        departmentId: null,
+        isOfficial: formData.type === "COMPANY",
+        isHoliday: formData.type === "HOLIDAY",
+        color: null,
+        remindAt: null,
+      };
 
       await scheduleApi.createSchedule(payload);
 
@@ -180,10 +254,51 @@ export function CalendarPage() {
     }
   };
 
+  const vacationEvents = useMemo(() => {
+    const result = [];
+
+    myApprovedVacations.forEach((vacation) => {
+      if (!vacation.startDate || !vacation.endDate) return;
+
+      const current = toLocalDate(vacation.startDate);
+      const end = toLocalDate(vacation.endDate);
+
+      while (current <= end) {
+        const dateText = [
+          current.getFullYear(),
+          String(current.getMonth() + 1).padStart(2, "0"),
+          String(current.getDate()).padStart(2, "0"),
+        ].join("-");
+
+        result.push({
+          id: `vacation-${vacation.id}-${dateText}`,
+          vacationId: vacation.id,
+          title: "내 휴가",
+          description: vacation.reason,
+          date: dateText,
+          endDate: vacation.endDate,
+          startTime: "",
+          endTime: "",
+          type: "휴가",
+          isVacation: true,
+          raw: vacation,
+        });
+
+        current.setDate(current.getDate() + 1);
+      }
+    });
+
+    return result;
+  }, [myApprovedVacations]);
+
+  const combinedEvents = useMemo(() => {
+    return [...events, ...vacationEvents];
+  }, [events, vacationEvents]);
+
   const filteredEvents = useMemo(() => {
-    if (filterType === "전체") return events;
-    return events.filter((event) => event.type === filterType);
-  }, [events, filterType]);
+    if (filterType === "전체") return combinedEvents;
+    return combinedEvents.filter((event) => event.type === filterType);
+  }, [combinedEvents, filterType]);
 
   const selectedDateEvents = useMemo(() => {
     const selectedDateText = [
@@ -195,41 +310,35 @@ export function CalendarPage() {
     return filteredEvents.filter((event) => event.date === selectedDateText);
   }, [date, filteredEvents]);
 
-  const datesWithEvents = useMemo(() => {
-    return events
-      .filter((event) => event.type !== "공휴일")
-      .map((event) => toLocalDate(event.date));
-  }, [events]);
-
   const personalDates = useMemo(() => {
-    return events
+    return combinedEvents
       .filter((event) => event.type === "개인")
       .map((event) => toLocalDate(event.date));
-  }, [events]);
+  }, [combinedEvents]);
 
   const teamDates = useMemo(() => {
-    return events
+    return combinedEvents
       .filter((event) => event.type === "팀")
       .map((event) => toLocalDate(event.date));
-  }, [events]);
+  }, [combinedEvents]);
 
   const companyDates = useMemo(() => {
-    return events
+    return combinedEvents
       .filter((event) => event.type === "전사")
       .map((event) => toLocalDate(event.date));
-  }, [events]);
+  }, [combinedEvents]);
 
   const vacationDates = useMemo(() => {
-    return events
+    return combinedEvents
       .filter((event) => event.type === "휴가")
       .map((event) => toLocalDate(event.date));
-  }, [events]);
+  }, [combinedEvents]);
 
   const holidayDates = useMemo(() => {
-    return events
+    return combinedEvents
       .filter((event) => event.type === "공휴일")
       .map((event) => toLocalDate(event.date));
-  }, [events]);
+  }, [combinedEvents]);
 
   const getEventColor = (type) => {
     const colors = {
@@ -375,6 +484,7 @@ export function CalendarPage() {
                 >
                   추가하기
                 </Button>
+
                 <Button
                   type="button"
                   variant="outline"
@@ -430,11 +540,11 @@ export function CalendarPage() {
                     if (selected) setDate(selected);
                   }}
                   className="rounded-md border"
-				  personalDates={personalDates}
-				  teamDates={teamDates}
-				  companyDates={companyDates}
-				  vacationDates={vacationDates}
-				  holidayDates={holidayDates}
+                  personalDates={personalDates}
+                  teamDates={teamDates}
+                  companyDates={companyDates}
+                  vacationDates={vacationDates}
+                  holidayDates={holidayDates}
                 />
               )}
 
@@ -485,7 +595,7 @@ export function CalendarPage() {
                       <div className="flex items-start justify-between mb-2">
                         <h4 className="font-semibold">{event.title}</h4>
 
-                        {event.type !== "휴가" && (
+                        {!event.isVacation && event.type !== "휴가" && (
                           <Button
                             size="sm"
                             variant="ghost"

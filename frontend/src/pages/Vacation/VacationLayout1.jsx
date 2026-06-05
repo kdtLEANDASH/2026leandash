@@ -30,7 +30,6 @@ export default function VacationLayout() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [apiVacationRequests, setApiVacationRequests] = useState([]);
-  const [apiUsers, setApiUsers] = useState([]);
   const [isVacationLoading, setIsVacationLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -58,16 +57,6 @@ export default function VacationLayout() {
 
   const itemsPerPage = 5;
   const recommendationSearchDays = Number(recommendationPeriod);
-
-  const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-
-  const getAuthHeader = () => {
-    const token =
-      localStorage.getItem("accessToken") || localStorage.getItem("token");
-
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
 
   const calculateDays = (start, end) => {
     if (!start || !end) return 0;
@@ -116,27 +105,14 @@ export default function VacationLayout() {
 
   const findEmployeeByUserId = useCallback(
     (userId) => {
-      if (userId === null || userId === undefined) return null;
-
-      const targetId = String(userId);
-
-      return (
-        apiUsers.find(
-          (user) =>
-            String(user.userId) === targetId ||
-            String(user.id) === targetId ||
-            String(user.employeeId) === targetId
-        ) ||
-        employees.find(
-          (employee) =>
-            String(employee.userId) === targetId ||
-            String(employee.id) === targetId ||
-            String(employee.employeeId) === targetId
-        ) ||
-        null
+      return employees.find(
+        (employee) =>
+          String(employee.userId) === String(userId) ||
+          String(employee.id) === String(userId) ||
+          String(employee.employeeId) === String(userId)
       );
     },
-    [apiUsers, employees]
+    [employees]
   );
 
   const normalizeVacation = useCallback(
@@ -156,10 +132,7 @@ export default function VacationLayout() {
         vacation.userId ||
         vacation.employeeId ||
         vacation.user?.userId ||
-        vacation.user?.id ||
-        vacation.applicantId ||
-        vacation.applicant?.userId ||
-        vacation.applicant?.id;
+        vacation.user?.id;
 
       const employee = findEmployeeByUserId(userId);
 
@@ -173,19 +146,16 @@ export default function VacationLayout() {
       return {
         id: vacationId,
         employeeId: userId,
-        employeeName:
-          vacation.employeeName ||
-          vacation.userName ||
-          vacation.user?.userName ||
-          vacation.user?.name ||
-          vacation.applicantName ||
-          vacation.applicant?.userName ||
-          vacation.applicant?.name ||
-          employee?.userName ||
-          employee?.employeeName ||
-          employee?.name ||
-          employee?.user_name ||
-          "이름 없음",
+		employeeName:
+		  vacation.employeeName ||
+		  vacation.userName ||
+		  vacation.user?.userName ||
+		  vacation.user?.name ||
+		  employee?.userName ||
+		  employee?.employeeName ||
+		  employee?.name ||
+		  employee?.user_name ||
+		  "이름 없음",
         type: vacation.vacationType || vacation.type || "",
         startDate,
         endDate,
@@ -203,7 +173,7 @@ export default function VacationLayout() {
         raw: vacation,
       };
     },
-     [findEmployeeByUserId]);
+ 	[currentUser, findEmployeeByUserId]);
 
   const loadVacations = useCallback(async () => {
     if (!currentUser) return;
@@ -220,7 +190,7 @@ export default function VacationLayout() {
     } finally {
       setIsVacationLoading(false);
     }
-  }, [currentUser, normalizeVacation]);
+  }, [currentUser, canApproveVacation, getCurrentUserId, normalizeVacation]);
 
   const formatScheduleDate = (value) => {
     if (!value) return "";
@@ -262,27 +232,6 @@ export default function VacationLayout() {
   };
 
   useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/users`, {
-          headers: getAuthHeader(),
-        });
-
-        setApiUsers(Array.isArray(response.data) ? response.data : []);
-      } catch (error) {
-        console.error(
-          "휴가 페이지 사용자 조회 실패:",
-          error.response?.data || error
-        );
-        setApiUsers([]);
-      }
-    };
-
-    loadUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
     const loadSchedules = async () => {
       try {
         const data = await scheduleApi.getMonthlySchedules();
@@ -300,7 +249,7 @@ export default function VacationLayout() {
 
     loadVacations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.id, currentUser?.userId, canApproveVacation, apiUsers.length]);
+  }, [currentUser?.id, currentUser?.userId, canApproveVacation]);
 
   const sourceVacationRequests =
     apiVacationRequests.length > 0 ? apiVacationRequests : vacationRequests;
@@ -362,7 +311,7 @@ export default function VacationLayout() {
         return !!employee && employee.department === currentUser?.department;
       }
 
-      return String(vacation.employeeId) === String(getCurrentUserId());
+      return vacation.employeeId === getCurrentUserId();
     });
   }, [
     sourceVacationRequests,
@@ -738,10 +687,10 @@ export default function VacationLayout() {
     try {
       await vacationApi.cancel(vacationId);
       await loadVacations();
-      alert("휴가 신청을 취소했습니다.");
     } catch (error) {
-      console.error("휴가 취소 실패:", error.response?.data || error);
+      console.error("휴가 취소 실패:", error);
       alert("휴가 취소에 실패했습니다.");
+      throw error;
     }
   };
 

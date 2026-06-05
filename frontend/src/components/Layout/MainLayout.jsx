@@ -103,10 +103,15 @@ export function MainLayout() {
   const loginUser = currentUser || (localLogin ? fallbackUser : null);
   const isLoggedIn = !!loginUser;
 
+  const isSuperAdmin =
+    loginUser?.role === "최고관리자" || loginUser?.role === "ADMIN";
+
   const isHrAdmin = loginUser?.department === "인사팀";
+
+  const canApproveVacation = !!loginUser && (isSuperAdmin || isHrAdmin);
+
   const isManagerOrAdmin =
     loginUser?.role === "최고관리자" || loginUser?.role === "팀장";
-  const canApproveVacation = isHrAdmin || loginUser?.role === "팀장";
 
   const pendingVacationCount =
     vacationRequests.filter((request) =>
@@ -186,7 +191,7 @@ export function MainLayout() {
         return "bg-gray-500";
     }
   };
-
+  
   const navItems = [
     {
       path: "/dashboard",
@@ -223,13 +228,13 @@ export function MainLayout() {
       roles: ["최고관리자", "팀장", "일반직원"],
       public: true,
     },
-    {
-      path: "/vacation",
-      label: isHrAdmin ? "휴가 신청현황" : "휴가 신청",
-      icon: Plane,
-      roles: ["최고관리자", "팀장", "일반직원"],
-      public: true,
-    },
+	{
+	  path: canApproveVacation ? "/vacation/list" : "/vacation/request",
+	  label: canApproveVacation ? "휴가 관리" : "휴가 신청",
+	  icon: Plane,
+	  roles: ["최고관리자", "팀장", "일반직원", "ADMIN"],
+	  public: true,
+	},
     {
       path: "/calendar",
       label: "캘린더",
@@ -280,21 +285,25 @@ export function MainLayout() {
       loginUser.role === "팀장" ||
       loginUser.department === "인사팀");
 
-  const filteredNavItems = navItems.filter((item) => {
-    if (!loginUser) {
-      return item.public;
-    }
+	  const filteredNavItems = navItems.filter((item) => {
+	    if (!loginUser) {
+	      return item.public;
+	    }
 
-    if (item.path === "/evaluation") {
-      return canAccessEvaluation;
-    }
+	    if (item.departments?.includes(loginUser.department)) {
+	      return true;
+	    }
 
-    if (item.path === "/inquiry") {
-      return !isManagerOrAdmin && item.roles.includes(loginUser.role);
-    }
+	    if (item.path === "/evaluation") {
+	      return canAccessEvaluation;
+	    }
 
-    return item.roles.includes(loginUser.role);
-  });
+	    if (item.path === "/inquiry") {
+	      return !isManagerOrAdmin && item.roles.includes(loginUser.role);
+	    }
+
+	    return item.roles?.includes(loginUser.role);
+	  });
 
   const orderedNavItems = useMemo(() => {
     const order = settings.headerOrder?.length
@@ -304,8 +313,12 @@ export function MainLayout() {
     return [...filteredNavItems]
       .filter((item) => !settings.hiddenHeaderItems?.includes(item.path))
       .sort((a, b) => {
-        const aIndex = order.indexOf(a.path);
-        const bIndex = order.indexOf(b.path);
+        const aIndex = order.indexOf(
+          a.path.startsWith("/vacation") ? "/vacation" : a.path
+        );
+        const bIndex = order.indexOf(
+          b.path.startsWith("/vacation") ? "/vacation" : b.path
+        );
 
         return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
       });
@@ -314,18 +327,29 @@ export function MainLayout() {
   const configurableNavItems = filteredNavItems;
 
   const hiddenNavItems = configurableNavItems.filter((item) =>
-    settings.hiddenHeaderItems?.includes(item.path)
+    settings.hiddenHeaderItems?.includes(
+      item.path.startsWith("/vacation") ? "/vacation" : item.path
+    )
   );
 
   const visibleConfigNavItems = configurableNavItems
-    .filter((item) => !settings.hiddenHeaderItems?.includes(item.path))
+    .filter(
+      (item) =>
+        !settings.hiddenHeaderItems?.includes(
+          item.path.startsWith("/vacation") ? "/vacation" : item.path
+        )
+    )
     .sort((a, b) => {
       const order = settings.headerOrder?.length
         ? settings.headerOrder
         : DEFAULT_HEADER_ORDER;
 
-      const aIndex = order.indexOf(a.path);
-      const bIndex = order.indexOf(b.path);
+      const aIndex = order.indexOf(
+        a.path.startsWith("/vacation") ? "/vacation" : a.path
+      );
+      const bIndex = order.indexOf(
+        b.path.startsWith("/vacation") ? "/vacation" : b.path
+      );
 
       return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
     });
@@ -333,6 +357,10 @@ export function MainLayout() {
   const isActive = (path) => {
     if (path === "/dashboard") {
       return location.pathname === "/dashboard";
+    }
+
+    if (path.startsWith("/vacation")) {
+      return location.pathname.startsWith("/vacation");
     }
 
     return location.pathname.startsWith(path);
@@ -355,8 +383,9 @@ export function MainLayout() {
   };
 
   const moveHeaderItem = (path, direction) => {
+    const normalizedPath = path.startsWith("/vacation") ? "/vacation" : path;
     const currentOrder = getFullHeaderOrder();
-    const currentIndex = currentOrder.indexOf(path);
+    const currentIndex = currentOrder.indexOf(normalizedPath);
 
     if (currentIndex === -1) return;
 
@@ -377,17 +406,21 @@ export function MainLayout() {
   };
 
   const hideHeaderItem = (path) => {
+    const normalizedPath = path.startsWith("/vacation") ? "/vacation" : path;
+
     updateSettings({
       hiddenHeaderItems: Array.from(
-        new Set([...(settings.hiddenHeaderItems || []), path])
+        new Set([...(settings.hiddenHeaderItems || []), normalizedPath])
       ),
     });
   };
 
   const showHeaderItem = (path) => {
+    const normalizedPath = path.startsWith("/vacation") ? "/vacation" : path;
+
     updateSettings({
       hiddenHeaderItems: (settings.hiddenHeaderItems || []).filter(
-        (item) => item !== path
+        (item) => item !== normalizedPath
       ),
     });
   };
@@ -476,7 +509,7 @@ export function MainLayout() {
 
               return (
                 <Link
-                  key={item.path}
+                  key={`${item.path}-${item.label}`}
                   to={item.path}
                   title={item.label}
                   onClick={handleProtectedNavClick}
@@ -497,7 +530,7 @@ export function MainLayout() {
                       {item.label}
 
                       {isLoggedIn &&
-                        item.path === "/vacation" &&
+                        item.path.startsWith("/vacation") &&
                         canApproveVacation &&
                         pendingVacationCount > 0 && (
                           <span className="absolute -top-1.5 -right-2 w-[8px] h-[8px] rounded-full bg-red-500" />
@@ -507,7 +540,7 @@ export function MainLayout() {
 
                   {!showNavText &&
                     isLoggedIn &&
-                    item.path === "/vacation" &&
+                    item.path.startsWith("/vacation") &&
                     canApproveVacation &&
                     pendingVacationCount > 0 && (
                       <span className="absolute top-1 right-0 w-[8px] h-[8px] rounded-full bg-red-500" />
@@ -1075,7 +1108,7 @@ export function MainLayout() {
                                       getVacationAlarmId(request),
                                     ]);
                                     setShowNotifications(false);
-                                    navigate("/vacation");
+                                    navigate("/vacation/info");
                                   }}
                                   className={cn(
                                     "w-full rounded-lg px-3 py-2 text-left transition-colors",

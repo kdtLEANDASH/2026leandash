@@ -14,17 +14,12 @@ import {
 } from "@/components/UI/select";
 
 export default function VacationRequestPage() {
-  const {
-    isHrAdmin,
-    formData,
-    setFormData,
-    handleDateChange,
-    handleSubmit,
-  } = useOutletContext();
-
-  if (isHrAdmin) {
-    return <div className="text-sm text-gray-500">인사팀은 휴가 신청을 사용할 수 없습니다.</div>;
-  }
+	const {
+	  formData,
+	  setFormData,
+	  handleDateChange,
+	  handleSubmit,
+	} = useOutletContext();
 
   return (
     <Card>
