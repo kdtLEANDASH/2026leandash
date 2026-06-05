@@ -1,15 +1,17 @@
-import axios from "axios";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/UI/badge";
 import { useAppContext } from "@/store/AppProvider";
 import { cn } from "@/components/UI/utils";
 import { scheduleApi } from "@/api/scheduleApi";
-import { vacationApi } from "@/api/vacationApi";
 
 export default function VacationLayout() {
   const {
     vacationRequests,
+    addVacationRequest,
+    cancelVacation,
+    approveVacation,
+    rejectVacation,
     currentUser,
     employees,
     getVacationBalance,
@@ -18,20 +20,22 @@ export default function VacationLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isSuperAdmin =
-    currentUser?.role === "최고관리자" || currentUser?.role === "ADMIN";
-
   const isHrAdmin = currentUser?.department === "인사팀";
-  const isTeamLeader = currentUser?.role === "팀장";
 
-  const canApproveVacation = !!currentUser && isSuperAdmin;
-  const canViewVacationStatus = !!currentUser && (isTeamLeader || canApproveVacation);
+  const isManager =
+    !!currentUser &&
+    (currentUser.role === "팀장" ||
+      currentUser.role === "최고관리자" ||
+      currentUser.department === "인사팀");
+
+  const canViewVacationStatus =
+    !!currentUser &&
+    (currentUser.role === "팀장" ||
+      currentUser.role === "최고관리자" ||
+      currentUser.department === "인사팀");
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarEvents, setCalendarEvents] = useState([]);
-  const [apiVacationRequests, setApiVacationRequests] = useState([]);
-  const [apiUsers, setApiUsers] = useState([]);
-  const [isVacationLoading, setIsVacationLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     type: "",
@@ -50,8 +54,10 @@ export default function VacationLayout() {
   const [showCurrentOnly, setShowCurrentOnly] = useState(false);
   const [statusSortOption, setStatusSortOption] = useState("startAsc");
 
-  const [recommendationTypeFilter, setRecommendationTypeFilter] = useState("전체");
-  const [recommendationDaysFilter, setRecommendationDaysFilter] = useState("전체");
+  const [recommendationTypeFilter, setRecommendationTypeFilter] =
+    useState("전체");
+  const [recommendationDaysFilter, setRecommendationDaysFilter] =
+    useState("전체");
   const [recommendationPeriod, setRecommendationPeriod] = useState("90");
   const [previewRecommendation, setPreviewRecommendation] = useState(null);
   const [previewDate, setPreviewDate] = useState(new Date());
@@ -59,25 +65,72 @@ export default function VacationLayout() {
   const itemsPerPage = 5;
   const recommendationSearchDays = Number(recommendationPeriod);
 
-  const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+  const formatScheduleDate = (value) => {
+    if (!value) return "";
 
-  const getAuthHeader = () => {
-    const token =
-      localStorage.getItem("accessToken") || localStorage.getItem("token");
+    if (typeof value === "string") {
+      return value.includes("T") ? value.split("T")[0] : value.slice(0, 10);
+    }
 
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    return "";
   };
+
+  const formatScheduleTime = (value) => {
+    if (!value || typeof value !== "string") return "";
+    if (!value.includes("T")) return "";
+
+    return value.split("T")[1]?.slice(0, 5) || "";
+  };
+
+  const normalizeSchedule = (schedule) => {
+    const start = schedule.startDatetime || schedule.startDateTime;
+    const end = schedule.endDatetime || schedule.endDateTime;
+
+    const typeMap = {
+      PERSONAL: "개인",
+      TEAM: "팀",
+      COMPANY: "전사",
+      HOLIDAY: "공휴일",
+      VACATION: "휴가",
+    };
+
+    return {
+      id: schedule.scheduleId,
+      title: schedule.title,
+      description: schedule.content,
+      date: formatScheduleDate(start),
+      endDate: formatScheduleDate(end),
+      startTime: formatScheduleTime(start),
+      endTime: formatScheduleTime(end),
+      type: schedule.isHoliday
+        ? "공휴일"
+        : typeMap[schedule.scheduleType] || "개인",
+      raw: schedule,
+    };
+  };
+
+  useEffect(() => {
+    const loadSchedules = async () => {
+      try {
+        const data = await scheduleApi.getMonthlySchedules();
+        const normalized = Array.isArray(data)
+          ? data.map(normalizeSchedule)
+          : [];
+
+        setCalendarEvents(normalized);
+      } catch (error) {
+        console.error("휴가 페이지 일정 조회 실패:", error);
+      }
+    };
+
+    loadSchedules();
+  }, []);
 
   const calculateDays = (start, end) => {
     if (!start || !end) return 0;
 
     const startDate = new Date(start);
     const endDate = new Date(end);
-
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      return 0;
-    }
 
     return (
       Math.ceil(
@@ -110,228 +163,23 @@ export default function VacationLayout() {
     return day === 0 || day === 6;
   };
 
-  const getCurrentUserId = useCallback(() => {
-    return currentUser?.userId || currentUser?.id;
-  }, [currentUser]);
+  const visibleVacationRequests = useMemo(() => {
+    return vacationRequests.filter((vacation) => {
+      if (currentUser?.role === "최고관리자" || isHrAdmin) return true;
 
-  const findEmployeeByUserId = useCallback(
-    (userId) => {
-      if (userId === null || userId === undefined) return null;
+      if (currentUser?.role === "팀장") {
+        const employee = employees.find((emp) => emp.id === vacation.employeeId);
 
-      const targetId = String(userId);
-
-      return (
-        apiUsers.find(
-          (user) =>
-            String(user.userId) === targetId ||
-            String(user.id) === targetId ||
-            String(user.employeeId) === targetId
-        ) ||
-        employees.find(
-          (employee) =>
-            String(employee.userId) === targetId ||
-            String(employee.id) === targetId ||
-            String(employee.employeeId) === targetId
-        ) ||
-        null
-      );
-    },
-    [apiUsers, employees]
-  );
-
-  const normalizeVacation = useCallback(
-    (vacation) => {
-      const statusMap = {
-        PENDING: "대기",
-        APPROVED: "승인",
-        REJECTED: "반려",
-        CANCELED: "취소",
-        대기: "대기",
-        승인: "승인",
-        반려: "반려",
-        취소: "취소",
-      };
-
-      const userId =
-        vacation.userId ||
-        vacation.employeeId ||
-        vacation.user?.userId ||
-        vacation.user?.id ||
-        vacation.applicantId ||
-        vacation.applicant?.userId ||
-        vacation.applicant?.id;
-
-      const employee = findEmployeeByUserId(userId);
-
-      const vacationId =
-        vacation.vacationId ||
-        vacation.id;
-
-      const startDate = vacation.startDate || "";
-      const endDate = vacation.endDate || "";
-
-      return {
-        id: vacationId,
-        employeeId: userId,
-        employeeName:
-          vacation.employeeName ||
-          vacation.userName ||
-          vacation.user?.userName ||
-          vacation.user?.name ||
-          vacation.applicantName ||
-          vacation.applicant?.userName ||
-          vacation.applicant?.name ||
-          employee?.userName ||
-          employee?.employeeName ||
-          employee?.name ||
-          employee?.user_name ||
-          "이름 없음",
-        type: vacation.vacationType || vacation.type || "",
-        startDate,
-        endDate,
-        reason: vacation.reason || "",
-        status: statusMap[vacation.status] || "대기",
-        approver:
-          vacation.approverName ||
-          vacation.approver?.userName ||
-          vacation.approver ||
-          "",
-        requestDate: vacation.createdAt
-          ? String(vacation.createdAt).slice(0, 10)
-          : vacation.requestDate || "",
-        days: vacation.days || calculateDays(startDate, endDate),
-        raw: vacation,
-      };
-    },
-     [findEmployeeByUserId]);
-
-  const loadVacations = useCallback(async () => {
-    if (!currentUser) return;
-
-    try {
-      setIsVacationLoading(true);
-
-      const data = await vacationApi.getAll();
-
-      setApiVacationRequests(Array.isArray(data) ? data.map(normalizeVacation) : []);
-    } catch (error) {
-      console.error("휴가 목록 조회 실패:", error);
-      setApiVacationRequests([]);
-    } finally {
-      setIsVacationLoading(false);
-    }
-  }, [currentUser, normalizeVacation]);
-
-  const formatScheduleDate = (value) => {
-    if (!value) return "";
-    if (typeof value === "string") {
-      return value.includes("T") ? value.split("T")[0] : value.slice(0, 10);
-    }
-    return "";
-  };
-
-  const formatScheduleTime = (value) => {
-    if (!value || typeof value !== "string") return "";
-    if (!value.includes("T")) return "";
-    return value.split("T")[1]?.slice(0, 5) || "";
-  };
-
-  const normalizeSchedule = (schedule) => {
-    const start = schedule.startDatetime || schedule.startDateTime;
-    const end = schedule.endDatetime || schedule.endDateTime;
-
-    const typeMap = {
-      PERSONAL: "개인",
-      TEAM: "팀",
-      COMPANY: "전사",
-      HOLIDAY: "공휴일",
-      VACATION: "휴가",
-    };
-
-    return {
-      id: schedule.scheduleId,
-      title: schedule.title,
-      description: schedule.content,
-      date: formatScheduleDate(start),
-      endDate: formatScheduleDate(end),
-      startTime: formatScheduleTime(start),
-      endTime: formatScheduleTime(end),
-      type: schedule.isHoliday ? "공휴일" : typeMap[schedule.scheduleType] || "개인",
-      raw: schedule,
-    };
-  };
-
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/users`, {
-          headers: getAuthHeader(),
-        });
-
-        setApiUsers(Array.isArray(response.data) ? response.data : []);
-      } catch (error) {
-        console.error(
-          "휴가 페이지 사용자 조회 실패:",
-          error.response?.data || error
+        return (
+          !!employee &&
+          (employee.department === currentUser.department ||
+            vacation.employeeId === currentUser.id)
         );
-        setApiUsers([]);
       }
-    };
 
-    loadUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const loadSchedules = async () => {
-      try {
-        const data = await scheduleApi.getMonthlySchedules();
-        setCalendarEvents(Array.isArray(data) ? data.map(normalizeSchedule) : []);
-      } catch (error) {
-        console.error("휴가 페이지 일정 조회 실패:", error);
-      }
-    };
-
-    loadSchedules();
-  }, []);
-
-  useEffect(() => {
-    if (!currentUser) return;
-
-    loadVacations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.id, currentUser?.userId, canApproveVacation, apiUsers.length]);
-
-  const sourceVacationRequests =
-    apiVacationRequests.length > 0 ? apiVacationRequests : vacationRequests;
-
-	const visibleVacationRequests = useMemo(() => {
-	  return sourceVacationRequests.filter((vacation) => {
-	    if (canApproveVacation) return true;
-
-	    if (isHrAdmin) return true;
-
-	    if (isTeamLeader) {
-	      const employee = findEmployeeByUserId(vacation.employeeId);
-
-	      return (
-	        !!employee &&
-	        (employee.department === currentUser?.department ||
-	          String(vacation.employeeId) === String(getCurrentUserId()))
-	      );
-	    }
-
-	    return String(vacation.employeeId) === String(getCurrentUserId());
-	  });
-	}, [
-	  sourceVacationRequests,
-	  currentUser,
-	  canApproveVacation,
-	  isHrAdmin,
-	  isTeamLeader,
-	  findEmployeeByUserId,
-	  getCurrentUserId,
-	]);
+      return vacation.employeeId === currentUser?.id;
+    });
+  }, [vacationRequests, currentUser, employees, isHrAdmin]);
 
   const filteredVacationRequests = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase();
@@ -351,40 +199,33 @@ export default function VacationLayout() {
     });
   }, [visibleVacationRequests, searchKeyword, statusFilter]);
 
-  const visibleApprovedVacations = useMemo(() => {
-    return sourceVacationRequests.filter((vacation) => {
-      if (vacation.status !== "승인") return false;
+  const visibleApprovedVacations = vacationRequests.filter((vacation) => {
+    if (vacation.status !== "승인") return false;
 
-      if (isHrAdmin) return true;
+    if (currentUser?.role === "최고관리자") return true;
+    if (currentUser?.department === "인사팀") return true;
 
-      if (isTeamLeader) {
-        const employee = findEmployeeByUserId(vacation.employeeId);
-        return !!employee && employee.department === currentUser?.department;
-      }
+    if (currentUser?.role === "팀장") {
+      const employee = employees.find((emp) => emp.id === vacation.employeeId);
+      return !!employee && employee.department === currentUser.department;
+    }
 
-      return String(vacation.employeeId) === String(getCurrentUserId());
-    });
-  }, [
-    sourceVacationRequests,
-    isHrAdmin,
-    isTeamLeader,
-    currentUser,
-    findEmployeeByUserId,
-    getCurrentUserId,
-  ]);
+    return vacation.employeeId === currentUser?.id;
+  });
 
   const vacationStatusList = useMemo(() => {
     return [...visibleApprovedVacations].sort(
-      (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+      (a, b) =>
+        new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
     );
   }, [visibleApprovedVacations]);
 
   const vacationBalance = currentUser
-    ? getVacationBalance(getCurrentUserId())
+    ? getVacationBalance(currentUser.id)
     : { total: 15, used: 0, remaining: 15 };
 
   const recommendedVacations = useMemo(() => {
-    if (!currentUser) return [];
+    if (!currentUser || isHrAdmin) return [];
 
     const todayDate = new Date();
 
@@ -435,8 +276,8 @@ export default function VacationLayout() {
     };
 
     const getTeamVacationCount = (dateStr) => {
-      return sourceVacationRequests.filter((vacation) => {
-        const employee = findEmployeeByUserId(vacation.employeeId);
+      return vacationRequests.filter((vacation) => {
+        const employee = employees.find((emp) => emp.id === vacation.employeeId);
 
         return (
           vacation.status === "승인" &&
@@ -534,12 +375,17 @@ export default function VacationLayout() {
           days: 1,
           type: "연차",
           reason: "팀 휴가자가 적어 업무 공백 부담이 적은 날짜입니다.",
-          description: "같은 부서 휴가자가 없어 승인 가능성이 높은 날짜입니다.",
+          description:
+            "같은 부서 휴가자가 없어 승인 가능성이 높은 날짜입니다.",
           teamVacationCount,
           totalRestDays: 1,
           restStartDate: dateStr,
           restEndDate: dateStr,
-          reasons: ["팀 휴가자 없음", "회사 일정 없음", "업무 공백 부담 낮음"],
+          reasons: [
+            "팀 휴가자 없음",
+            "회사 일정 없음",
+            "업무 공백 부담 낮음",
+          ],
           score: 2,
         });
       }
@@ -628,14 +474,14 @@ export default function VacationLayout() {
     });
   }, [
     currentUser,
+    isHrAdmin,
     calendarEvents,
-    sourceVacationRequests,
+    vacationRequests,
     employees,
     vacationBalance.remaining,
     recommendationSearchDays,
     recommendationTypeFilter,
     recommendationDaysFilter,
-    findEmployeeByUserId,
   ]);
 
   useEffect(() => {
@@ -666,7 +512,7 @@ export default function VacationLayout() {
     navigate("/vacation/request");
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
 
     if (
@@ -679,70 +525,20 @@ export default function VacationLayout() {
       return;
     }
 
-    if (formData.days <= 0) {
-      alert("휴가 종료일은 시작일 이후로 선택해주세요.");
-      return;
-    }
+    addVacationRequest({ ...formData });
 
-    try {
-      await vacationApi.create({
-        vacationType: formData.type,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
-        reason: formData.reason,
-      });
+    alert("휴가 신청이 제출되었습니다.");
 
-      alert("휴가 신청이 제출되었습니다.");
+    setCurrentPage(1);
+    navigate("/vacation/list");
 
-      await loadVacations();
-
-      setCurrentPage(1);
-      navigate("/vacation/list");
-
-      setFormData({
-        type: "",
-        startDate: "",
-        endDate: "",
-        reason: "",
-        days: 0,
-      });
-    } catch (error) {
-      console.error("휴가 신청 실패:", error);
-      alert("휴가 신청에 실패했습니다.");
-    }
-  };
-
-  const apiApproveVacation = async (vacationId) => {
-    try {
-      await vacationApi.approve(vacationId);
-      await loadVacations();
-      alert("휴가를 승인했습니다.");
-    } catch (error) {
-      console.error("휴가 승인 실패:", error.response?.data || error);
-      alert("휴가 승인에 실패했습니다.");
-    }
-  };
-
-  const apiRejectVacation = async (vacationId) => {
-    try {
-      await vacationApi.reject(vacationId);
-      await loadVacations();
-      alert("휴가를 반려했습니다.");
-    } catch (error) {
-      console.error("휴가 반려 실패:", error.response?.data || error);
-      alert("휴가 반려에 실패했습니다.");
-    }
-  };
-
-  const apiCancelVacation = async (vacationId) => {
-    try {
-      await vacationApi.cancel(vacationId);
-      await loadVacations();
-      alert("휴가 신청을 취소했습니다.");
-    } catch (error) {
-      console.error("휴가 취소 실패:", error.response?.data || error);
-      alert("휴가 취소에 실패했습니다.");
-    }
+    setFormData({
+      type: "",
+      startDate: "",
+      endDate: "",
+      reason: "",
+      days: 0,
+    });
   };
 
   const getStatusBadge = (status) => {
@@ -750,7 +546,6 @@ export default function VacationLayout() {
       승인: "bg-green-100 text-green-700 hover:bg-green-100",
       대기: "bg-yellow-100 text-yellow-700 hover:bg-yellow-100",
       반려: "bg-red-100 text-red-700 hover:bg-red-100",
-      취소: "bg-gray-100 text-gray-700 hover:bg-gray-100",
     };
 
     return <Badge className={map[status] || map["대기"]}>{status}</Badge>;
@@ -774,27 +569,22 @@ export default function VacationLayout() {
     "/vacation/info": "[ 내 휴가 정보 ]",
     "/vacation/recommend": "[ 휴가 추천 ]",
     "/vacation/request": "[ 휴가 신청하기 ]",
-    "/vacation/list": canApproveVacation
-      ? "[ 휴가 승인 및 반려 ]"
-      : "[ 신청 휴가 목록 ]",
+    "/vacation/list": isHrAdmin ? "[ 휴가 승인 및 반려 ]" : "[ 신청 휴가 목록 ]",
     "/vacation/status": "[ 휴가 현황 ]",
   };
 
   const contextValue = {
-    vacationRequests: sourceVacationRequests,
+    vacationRequests,
+    cancelVacation,
+    approveVacation,
+    rejectVacation,
     currentUser,
     employees,
     calendarEvents,
 
     isHrAdmin,
-    isTeamLeader,
-    canApproveVacation,
+    isManager,
     canViewVacationStatus,
-    isVacationLoading,
-
-    apiApproveVacation,
-    apiRejectVacation,
-    apiCancelVacation,
 
     selectedDate,
     setSelectedDate,
@@ -861,27 +651,30 @@ export default function VacationLayout() {
           <h2 className="text-lg font-semibold text-gray-900">
             {canViewVacationStatus ? "휴가 관리 / 현황" : "휴가 관리"}
           </h2>
-
           <p className="text-xs text-gray-500 mt-1">
-            {canApproveVacation ? "부서별 휴가 승인 및 반려" : "Vacation Management"}
+            {isHrAdmin ? "부서별 휴가 승인 및 반려" : "Vacation Management"}
           </p>
         </div>
 
         <div className="flex-1 p-3 space-y-2">
-          <NavLink to="/vacation/info" className={linkClass}>
-            내 휴가 정보
-          </NavLink>
+          {!isHrAdmin && (
+            <>
+              <NavLink to="/vacation/info" className={linkClass}>
+                내 휴가 정보
+              </NavLink>
 
-          <NavLink to="/vacation/recommend" className={linkClass}>
-            휴가 추천
-          </NavLink>
+              <NavLink to="/vacation/recommend" className={linkClass}>
+                휴가 추천
+              </NavLink>
 
-          <NavLink to="/vacation/request" className={linkClass}>
-            휴가 신청하기
-          </NavLink>
+              <NavLink to="/vacation/request" className={linkClass}>
+                휴가 신청하기
+              </NavLink>
+            </>
+          )}
 
           <NavLink to="/vacation/list" className={linkClass}>
-            {canApproveVacation ? "휴가 관리" : "신청 휴가 목록"}
+            {isHrAdmin ? "휴가 승인/반려" : "신청 휴가 목록"}
           </NavLink>
 
           {canViewVacationStatus && (

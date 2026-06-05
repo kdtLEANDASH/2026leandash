@@ -8,7 +8,6 @@ import {
   FileText,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import axios from "axios";
 import {
   Card,
   CardContent,
@@ -21,13 +20,13 @@ import { Calendar as CalendarComp } from "../../components/UI/calendar";
 import { useAppContext } from "../../store/AppProvider";
 import { cn } from "../../components/UI/utils";
 import { scheduleApi } from "../../api/scheduleApi";
-import { vacationApi } from "../../api/vacationApi";
 
 export function DashboardPage() {
   const {
     notices = [],
     getVacationBalance,
     currentUser,
+    vacationRequests = [],
     employees = [],
     customSettings,
   } = useAppContext() || {};
@@ -49,18 +48,6 @@ export function DashboardPage() {
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarEvents, setCalendarEvents] = useState([]);
-  const [vacationRequests, setVacationRequests] = useState([]);
-  const [apiUsers, setApiUsers] = useState([]);
-
-  const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-
-  const getAuthHeader = () => {
-    const token =
-      localStorage.getItem("accessToken") || localStorage.getItem("token");
-
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
 
   const formatDate = (value) => {
     if (!value) return "";
@@ -83,19 +70,6 @@ export function DashboardPage() {
 
     const [year, month, day] = dateStr.split("-").map(Number);
     return new Date(year, month - 1, day);
-  };
-
-  const calculateDays = (startDate, endDate) => {
-    if (!startDate || !endDate) return 0;
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-      return 0;
-    }
-
-    return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
   };
 
   const typeLabelMap = {
@@ -125,63 +99,6 @@ export function DashboardPage() {
     };
   };
 
-  const normalizeUserId = (value) => {
-    if (value === null || value === undefined) return "";
-    return String(value);
-  };
-
-  const findUserByUserId = (userId) => {
-    const targetId = normalizeUserId(userId);
-
-    return (
-      apiUsers.find(
-        (user) =>
-          normalizeUserId(user.userId) === targetId ||
-          normalizeUserId(user.id) === targetId
-      ) ||
-      employees.find(
-        (employee) =>
-          normalizeUserId(employee.userId) === targetId ||
-          normalizeUserId(employee.id) === targetId ||
-          normalizeUserId(employee.employeeId) === targetId
-      )
-    );
-  };
-
-  const normalizeVacation = (vacation) => {
-    const userId =
-      vacation.userId ||
-      vacation.employeeId ||
-      vacation.user?.userId ||
-      vacation.user?.id;
-
-    const user = findUserByUserId(userId);
-
-    const startDate = vacation.startDate || "";
-    const endDate = vacation.endDate || "";
-
-    return {
-      id: vacation.vacationId || vacation.id,
-      employeeId: userId,
-      employeeName:
-        vacation.employeeName ||
-        vacation.userName ||
-        vacation.user?.userName ||
-        vacation.user?.name ||
-        user?.userName ||
-        user?.employeeName ||
-        user?.name ||
-        "이름 없음",
-      type: vacation.vacationType || vacation.type || "휴가",
-      startDate,
-      endDate,
-      reason: vacation.reason || "",
-      status: vacation.status || "PENDING",
-      days: vacation.days || calculateDays(startDate, endDate),
-      raw: vacation,
-    };
-  };
-
   useEffect(() => {
     const loadSchedules = async () => {
       try {
@@ -199,49 +116,11 @@ export function DashboardPage() {
     loadSchedules();
   }, []);
 
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/users`, {
-          headers: getAuthHeader(),
-        });
-
-        setApiUsers(Array.isArray(response.data) ? response.data : []);
-      } catch (error) {
-        console.error("대시보드 사용자 조회 실패:", error.response?.data || error);
-        setApiUsers([]);
-      }
-    };
-
-    loadUsers();
-  }, [API_BASE_URL]);
-
-  useEffect(() => {
-    const loadVacations = async () => {
-      try {
-        const data = await vacationApi.getAll();
-
-        const normalized = Array.isArray(data)
-          ? data.map(normalizeVacation)
-          : [];
-
-        setVacationRequests(normalized);
-      } catch (error) {
-        console.error("대시보드 휴가 조회 실패:", error.response?.data || error);
-        setVacationRequests([]);
-      }
-    };
-
-    loadVacations();
-  }, [apiUsers, employees]);
-
   const loginUser =
     currentUser || {
       id: employees[0]?.id || "demo-user",
-      userId: employees[0]?.userId,
       name:
         employees[0]?.name ||
-        employees[0]?.userName ||
         localStorage.getItem("userEmail")?.split("@")[0] ||
         "테스트 사용자",
       email: employees[0]?.email || localStorage.getItem("userEmail") || "",
@@ -257,10 +136,8 @@ export function DashboardPage() {
   };
 
   try {
-    const loginUserId = loginUser?.userId || loginUser?.id;
-
-    if (typeof getVacationBalance === "function" && loginUserId) {
-      vacationBalance = getVacationBalance(loginUserId) || vacationBalance;
+    if (typeof getVacationBalance === "function" && loginUser?.id) {
+      vacationBalance = getVacationBalance(loginUser.id) || vacationBalance;
     }
   } catch (error) {
     vacationBalance = {
@@ -276,7 +153,6 @@ export function DashboardPage() {
   const formattedDate = `${today.getFullYear()}년 ${
     today.getMonth() + 1
   }월 ${today.getDate()}일`;
-
   const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][today.getDay()];
 
   const todayStr = [
@@ -302,23 +178,22 @@ export function DashboardPage() {
 
   const recentNotices = notices.slice(0, 5);
 
-  const isAdmin =
-    loginUser.role === "ADMIN" || loginUser.role === "최고관리자";
-
-  const isTeamLeader = loginUser.role === "팀장";
-  const isManager = isAdmin || isTeamLeader;
+  const isManager =
+    loginUser.role === "팀장" || loginUser.role === "최고관리자";
 
   const pendingVacations = isManager
     ? vacationRequests.filter((req) => {
-        const isPending = req.status === "PENDING" || req.status === "대기";
+        if (loginUser.role === "최고관리자") {
+          return req.status === "대기";
+        }
 
-        if (!isPending) return false;
+        const employee = employees.find((emp) => emp.id === req.employeeId);
 
-        if (isAdmin) return true;
-
-        const user = findUserByUserId(req.employeeId);
-
-        return user && user.department === loginUser.department;
+        return (
+          req.status === "대기" &&
+          employee &&
+          employee.department === loginUser.department
+        );
       })
     : [];
 
@@ -344,30 +219,11 @@ export function DashboardPage() {
       .map((event) => toLocalDate(event.date));
   }, [calendarEvents]);
 
-  const myApprovedVacationDates = useMemo(() => {
-    const currentUserId = loginUser?.userId || loginUser?.id;
-    const result = [];
-
-    vacationRequests
-      .filter(
-        (vacation) =>
-          (vacation.status === "APPROVED" || vacation.status === "승인") &&
-          String(vacation.employeeId) === String(currentUserId)
-      )
-      .forEach((vacation) => {
-        if (!vacation.startDate || !vacation.endDate) return;
-
-        const current = toLocalDate(vacation.startDate);
-        const end = toLocalDate(vacation.endDate);
-
-        while (current <= end) {
-          result.push(new Date(current));
-          current.setDate(current.getDate() + 1);
-        }
-      });
-
-    return result;
-  }, [vacationRequests, loginUser]);
+  const vacationDates = useMemo(() => {
+    return calendarEvents
+      .filter((event) => event.type === "휴가")
+      .map((event) => toLocalDate(event.date));
+  }, [calendarEvents]);
 
   const holidayDates = useMemo(() => {
     return calendarEvents
@@ -385,25 +241,6 @@ export function DashboardPage() {
 
     return calendarEvents.filter((event) => event.date === dateStr);
   };
-  
-  const selectedDateVacations = useMemo(() => {
-    if (!selectedDate) return [];
-
-    const currentUserId = loginUser?.userId || loginUser?.id;
-    const dateStr = [
-      selectedDate.getFullYear(),
-      String(selectedDate.getMonth() + 1).padStart(2, "0"),
-      String(selectedDate.getDate()).padStart(2, "0"),
-    ].join("-");
-
-    return vacationRequests.filter(
-      (vacation) =>
-        (vacation.status === "APPROVED" || vacation.status === "승인") &&
-        String(vacation.employeeId) === String(currentUserId) &&
-        vacation.startDate <= dateStr &&
-        vacation.endDate >= dateStr
-    );
-  }, [selectedDate, vacationRequests, loginUser]);
 
   const selectedDateEvents = getSelectedDateEvents();
 
@@ -431,7 +268,7 @@ export function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2">
-              안녕하세요, {loginUser.name || loginUser.userName}님! 👋
+              안녕하세요, {loginUser.name}님! 👋
             </h1>
             <p className="text-blue-100 text-lg">
               {formattedDate} ({dayOfWeek}요일)
@@ -553,12 +390,12 @@ export function DashboardPage() {
                       {vacation.employeeName}
                     </div>
                     <div className={cn("text-sm", textSub)}>
-                      {vacation.startDate} ~ {vacation.endDate} (
-                      {vacation.days}일)
+                      {vacation.startDate} ~ {vacation.endDate} ({vacation.days}
+                      일)
                     </div>
                   </div>
 
-                  <Link to="/vacation/list">
+                  <Link to="/vacation">
                     <Button size="sm" variant="outline">
                       확인하기
                     </Button>
@@ -626,7 +463,7 @@ export function DashboardPage() {
                   personalDates={personalDates}
                   teamDates={teamDates}
                   companyDates={companyDates}
-                  vacationDates={myApprovedVacationDates}
+                  vacationDates={vacationDates}
                   holidayDates={holidayDates}
                 />
               </div>
@@ -638,66 +475,36 @@ export function DashboardPage() {
                     : "날짜를 선택하세요"}
                 </h3>
 
-                {selectedDateEvents.length > 0 || selectedDateVacations.length > 0 ? (
+                {selectedDateEvents.length > 0 ? (
                   <div className="space-y-2">
-				  {selectedDateEvents.length > 0 || selectedDateVacations.length > 0 ? (
-				    <div className="space-y-2">
-				      {selectedDateEvents.map((event) => (
-				        <div
-				          key={event.id}
-				          className={cn("p-3 border rounded-lg", innerCardClass)}
-				        >
-				          <div className="flex items-start justify-between gap-2 mb-1">
-				            <span className={cn("text-sm font-medium", textMain)}>
-				              {event.title}
-				            </span>
-				            {getEventTypeBadge(event.type)}
-				          </div>
+                    {selectedDateEvents.map((event) => (
+                      <div
+                        key={event.id}
+                        className={cn(
+                          "p-3 border rounded-lg",
+                          innerCardClass
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <span className={cn("text-sm font-medium", textMain)}>
+                            {event.title}
+                          </span>
+                          {getEventTypeBadge(event.type)}
+                        </div>
 
-				          {event.startTime && event.endTime && (
-				            <div className={cn("text-xs", textSub)}>
-				              {event.startTime} - {event.endTime}
-				            </div>
-				          )}
+                        {event.startTime && event.endTime && (
+                          <div className={cn("text-xs", textSub)}>
+                            {event.startTime} - {event.endTime}
+                          </div>
+                        )}
 
-				          {event.description && (
-				            <div className={cn("text-xs mt-1", textSub)}>
-				              {event.description}
-				            </div>
-				          )}
-				        </div>
-				      ))}
-
-				      {selectedDateVacations.map((vacation) => (
-				        <div
-				          key={`vacation-${vacation.id}`}
-				          className={cn("p-3 border rounded-lg", innerCardClass)}
-				        >
-				          <div className="flex items-start justify-between gap-2 mb-1">
-				            <span className={cn("text-sm font-medium", textMain)}>
-				              {vacation.employeeName} 휴가
-				            </span>
-				            {getEventTypeBadge("휴가")}
-				          </div>
-
-				          <div className={cn("text-xs", textSub)}>
-				            {vacation.startDate} ~ {vacation.endDate}
-				          </div>
-
-				          {vacation.reason && (
-				            <div className={cn("text-xs mt-1", textSub)}>
-				              {vacation.reason}
-				            </div>
-				          )}
-				        </div>
-				      ))}
-				    </div>
-				  ) : (
-				    <div className={cn("text-center py-8", textMuted)}>
-				      <Calendar className="size-8 mx-auto mb-2 text-gray-400" />
-				      <p className="text-sm">일정이 없습니다</p>
-				    </div>
-				  )}
+                        {event.description && (
+                          <div className={cn("text-xs mt-1", textSub)}>
+                            {event.description}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className={cn("text-center py-8", textMuted)}>

@@ -22,6 +22,7 @@ import { cn } from "@/components/UI/utils";
 
 export default function VacationRecommendPage() {
   const {
+    isHrAdmin,
     calendarEvents = [],
     visibleApprovedVacations = [],
     recommendedVacations = [],
@@ -87,6 +88,14 @@ export default function VacationRecommendPage() {
 
     return result;
   }, [previewRecommendation, parseDate]);
+
+  if (isHrAdmin) {
+    return (
+      <div className="text-sm text-gray-500">
+        인사팀은 휴가 추천 기능을 사용할 수 없습니다.
+      </div>
+    );
+  }
 
   const previewDateData = (() => {
     if (!previewDate) return { events: [], vacations: [] };

@@ -19,8 +19,12 @@ import {
 
 export default function VacationListPage() {
   const {
-    canApproveVacation,
+    isHrAdmin,
+    isManager,
     currentUser,
+    cancelVacation,
+    approveVacation,
+    rejectVacation,
     visibleVacationRequests,
     filteredVacationRequests,
     currentPage,
@@ -31,10 +35,6 @@ export default function VacationListPage() {
     setStatusFilter,
     itemsPerPage,
     getStatusBadge,
-    apiApproveVacation,
-    apiRejectVacation,
-    apiCancelVacation,
-    isVacationLoading,
   } = useOutletContext();
 
   const totalItems = filteredVacationRequests.length;
@@ -60,11 +60,9 @@ export default function VacationListPage() {
     setCurrentPage(page);
   };
 
-  const currentUserId = currentUser?.userId || currentUser?.id;
-
   return (
     <div className="space-y-6">
-      {canApproveVacation && (
+      {isHrAdmin && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-5">
@@ -109,7 +107,7 @@ export default function VacationListPage() {
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
               <CalendarIcon className="size-5" />
-              {canApproveVacation ? "휴가 신청 내역 및 승인" : "휴가 신청 내역"}
+              {isHrAdmin ? "휴가 신청 내역 및 승인" : "휴가 신청 내역"}
             </span>
 
             <span className="text-sm font-normal text-gray-600">
@@ -141,17 +139,12 @@ export default function VacationListPage() {
                   <SelectItem value="대기">대기</SelectItem>
                   <SelectItem value="승인">승인</SelectItem>
                   <SelectItem value="반려">반려</SelectItem>
-                  <SelectItem value="취소">취소</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {isVacationLoading ? (
-            <div className="text-center py-12 text-gray-500">
-              휴가 신청 내역을 불러오는 중입니다.
-            </div>
-          ) : filteredVacationRequests.length === 0 ? (
+          {filteredVacationRequests.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <CalendarIcon className="size-12 mx-auto mb-3 text-gray-400" />
               <p>조건에 맞는 휴가 신청 내역이 없습니다</p>
@@ -188,22 +181,23 @@ export default function VacationListPage() {
                         </div>
 
                         <div className="text-xs text-gray-500">
-                          신청일: {vacation.requestDate || "-"}
+                          신청일: {vacation.requestDate}
                           {vacation.approver && ` · 처리자: ${vacation.approver}`}
                         </div>
                       </div>
 
-                      {(vacation.status === "대기" ||
-                        vacation.status === "승인") && (
+                      {vacation.status === "대기" && (
                         <div className="flex gap-2">
-                          {canApproveVacation && vacation.status === "대기" && (
+                          {isManager && (
                             <>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={async () => {
-                                  await apiApproveVacation(vacation.id);
-                                }}
+                                onClick={() =>
+                                  currentUser &&
+                                  (approveVacation(vacation.id, currentUser.name),
+                                  alert("휴가를 승인했습니다."))
+                                }
                                 className="text-green-600 hover:text-green-700 hover:bg-green-50"
                               >
                                 <CheckCircle2 className="size-4 mr-1" />
@@ -213,9 +207,11 @@ export default function VacationListPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={async () => {
-                                  await apiRejectVacation(vacation.id);
-                                }}
+                                onClick={() =>
+                                  currentUser &&
+                                  (rejectVacation(vacation.id, currentUser.name),
+                                  alert("휴가를 반려했습니다."))
+                                }
                                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               >
                                 <XCircle className="size-4 mr-1" />
@@ -224,26 +220,26 @@ export default function VacationListPage() {
                             </>
                           )}
 
-                          {String(vacation.employeeId) === String(currentUserId) &&
-                            !canApproveVacation && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={async () => {
-                                  await apiCancelVacation(vacation.id);
+                          {vacation.employeeId === currentUser?.id && !isManager && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                cancelVacation(vacation.id);
+                                alert("휴가 신청을 취소했습니다.");
 
-                                  if (
-                                    paginatedVacationRequests.length === 1 &&
-                                    currentPage > 1
-                                  ) {
-                                    setCurrentPage(currentPage - 1);
-                                  }
-                                }}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                취소
-                              </Button>
-                            )}
+                                if (
+                                  paginatedVacationRequests.length === 1 &&
+                                  currentPage > 1
+                                ) {
+                                  setCurrentPage(currentPage - 1);
+                                }
+                              }}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              취소
+                            </Button>
+                          )}
                         </div>
                       )}
                     </div>
