@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import {
   Calendar as CalendarIcon,
@@ -22,9 +23,9 @@ import { cn } from "@/components/UI/utils";
 export default function VacationRecommendPage() {
   const {
     isHrAdmin,
-    calendarEvents,
-    visibleApprovedVacations,
-    recommendedVacations,
+    calendarEvents = [],
+    visibleApprovedVacations = [],
+    recommendedVacations = [],
     recommendationTypeFilter,
     setRecommendationTypeFilter,
     recommendationDaysFilter,
@@ -36,11 +37,57 @@ export default function VacationRecommendPage() {
     previewDate,
     setPreviewDate,
     setPreviewRecommendation,
-    holidayDates,
+    holidayDates = [],
     formatDate,
     parseDate,
     handleApplyRecommendation,
   } = useOutletContext();
+
+  const toLocalDate = (dateStr) => {
+    if (!dateStr) return new Date();
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const personalDates = useMemo(() => {
+    return calendarEvents
+      .filter((event) => event.type === "개인")
+      .map((event) => toLocalDate(event.date));
+  }, [calendarEvents]);
+
+  const teamDates = useMemo(() => {
+    return calendarEvents
+      .filter((event) => event.type === "팀")
+      .map((event) => toLocalDate(event.date));
+  }, [calendarEvents]);
+
+  const companyDates = useMemo(() => {
+    return calendarEvents
+      .filter((event) => event.type === "전사")
+      .map((event) => toLocalDate(event.date));
+  }, [calendarEvents]);
+
+  const vacationDates = useMemo(() => {
+    return visibleApprovedVacations
+      .map((vacation) => vacation.startDate)
+      .filter(Boolean)
+      .map((dateStr) => toLocalDate(dateStr));
+  }, [visibleApprovedVacations]);
+
+  const recommendedDates = useMemo(() => {
+    if (!previewRecommendation) return [];
+
+    const result = [];
+    const cur = parseDate(previewRecommendation.startDate);
+    const end = parseDate(previewRecommendation.endDate);
+
+    while (cur <= end) {
+      result.push(new Date(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    return result;
+  }, [previewRecommendation, parseDate]);
 
   if (isHrAdmin) {
     return (
@@ -62,21 +109,6 @@ export default function VacationRecommendPage() {
       ),
     };
   })();
-
-  const selectedRecommendationDates = previewRecommendation
-    ? (() => {
-        const result = [];
-        const cur = parseDate(previewRecommendation.startDate);
-        const end = parseDate(previewRecommendation.endDate);
-
-        while (cur <= end) {
-          result.push(new Date(cur));
-          cur.setDate(cur.getDate() + 1);
-        }
-
-        return result;
-      })()
-    : [];
 
   const handlePreviewRecommendation = (recommendation) => {
     setPreviewRecommendation(recommendation);
@@ -106,42 +138,19 @@ export default function VacationRecommendPage() {
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div className="rounded-lg bg-white border border-blue-100 p-4">
-              <div className="text-sm font-semibold text-gray-900 mb-1">
-                공휴일 징검다리
+            {[
+              ["공휴일 징검다리", "주말 공휴일은 제외하고, 평일 공휴일 앞뒤 1~2일을 기준으로 추천합니다."],
+              ["주말 연장 휴가", "공휴일 징검다리가 아닌 월요일 또는 금요일 휴가를 추천합니다."],
+              ["팀 휴가 현황", "같은 부서 휴가자가 적은 날짜를 우선 추천합니다."],
+              ["캘린더 미리보기", "추천 카드를 선택하면 해당 추천 날짜를 하늘색으로 표시합니다."],
+            ].map(([title, desc]) => (
+              <div key={title} className="rounded-lg bg-white border border-blue-100 p-4">
+                <div className="text-sm font-semibold text-gray-900 mb-1">
+                  {title}
+                </div>
+                <div className="text-xs text-gray-600">{desc}</div>
               </div>
-              <div className="text-xs text-gray-600">
-                주말 공휴일은 제외하고, 평일 공휴일 앞뒤 1~2일을 기준으로
-                추천합니다.
-              </div>
-            </div>
-
-            <div className="rounded-lg bg-white border border-blue-100 p-4">
-              <div className="text-sm font-semibold text-gray-900 mb-1">
-                주말 연장 휴가
-              </div>
-              <div className="text-xs text-gray-600">
-                공휴일 징검다리가 아닌 월요일 또는 금요일 휴가를 추천합니다.
-              </div>
-            </div>
-
-            <div className="rounded-lg bg-white border border-blue-100 p-4">
-              <div className="text-sm font-semibold text-gray-900 mb-1">
-                팀 휴가 현황
-              </div>
-              <div className="text-xs text-gray-600">
-                같은 부서 휴가자가 적은 날짜를 우선 추천합니다.
-              </div>
-            </div>
-
-            <div className="rounded-lg bg-white border border-blue-100 p-4">
-              <div className="text-sm font-semibold text-gray-900 mb-1">
-                캘린더 미리보기
-              </div>
-              <div className="text-xs text-gray-600">
-                추천 카드를 선택하면 해당 추천 날짜만 캘린더에 표시합니다.
-              </div>
-            </div>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -160,9 +169,7 @@ export default function VacationRecommendPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="전체">전체</SelectItem>
-                  <SelectItem value="공휴일 징검다리">
-                    공휴일 징검다리
-                  </SelectItem>
+                  <SelectItem value="공휴일 징검다리">공휴일 징검다리</SelectItem>
                   <SelectItem value="주말 연장">주말 연장</SelectItem>
                   <SelectItem value="승인 가능성">승인 가능성</SelectItem>
                   <SelectItem value="잔여 연차 활용">잔여 연차 활용</SelectItem>
@@ -283,8 +290,7 @@ export default function VacationRecommendPage() {
                       <span className="text-gray-500">신청일</span>
                       <span className="font-medium text-gray-900">
                         {recommendation.startDate}
-                        {recommendation.startDate !==
-                          recommendation.endDate &&
+                        {recommendation.startDate !== recommendation.endDate &&
                           ` ~ ${recommendation.endDate}`}
                       </span>
                     </div>
@@ -361,15 +367,18 @@ export default function VacationRecommendPage() {
 
           <CardContent className="space-y-4">
             <div className="flex justify-center">
-			<CalendarComp
-			  mode="single"
-			  selected={undefined}
-			  onSelect={(date) => date && setPreviewDate(date)}
-			  className="rounded-md border text-base"
-			  datesWithEvents={selectedRecommendationDates}
-			  holidayDates={holidayDates}
-			  underlineDate={previewDate}
-			/>
+              <CalendarComp
+                mode="single"
+                selected={undefined}
+                onSelect={(date) => date && setPreviewDate(date)}
+                className="rounded-md border text-base"
+                personalDates={personalDates}
+                teamDates={teamDates}
+                companyDates={companyDates}
+                vacationDates={vacationDates}
+                holidayDates={holidayDates}
+                recommendedDates={recommendedDates}
+              />
             </div>
 
             {previewRecommendation ? (
@@ -404,7 +413,8 @@ export default function VacationRecommendPage() {
                   key={event.id}
                   className="p-3 bg-white border rounded-lg text-sm"
                 >
-                  {event.title}
+                  <div className="font-medium text-gray-900">{event.title}</div>
+                  <div className="text-xs text-gray-500 mt-1">{event.type}</div>
                 </div>
               ))}
 

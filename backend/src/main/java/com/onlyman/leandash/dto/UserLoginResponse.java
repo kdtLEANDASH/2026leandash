@@ -16,4 +16,8 @@ public class UserLoginResponse {
     private String accessToken;
     private String tokenType;
     private String message;
+    private Long departmentId;
+    private String departmentName;
+    private String phone;
+    private String position;
 }

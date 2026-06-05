@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/UI/badge";
 import { useAppContext } from "@/store/AppProvider";
 import { cn } from "@/components/UI/utils";
+import { scheduleApi } from "@/api/scheduleApi";
 
 export default function VacationLayout() {
   const {
@@ -14,7 +15,6 @@ export default function VacationLayout() {
     currentUser,
     employees,
     getVacationBalance,
-    calendarEvents,
   } = useAppContext();
 
   const navigate = useNavigate();
@@ -35,6 +35,7 @@ export default function VacationLayout() {
       currentUser.department === "인사팀");
 
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [calendarEvents, setCalendarEvents] = useState([]);
 
   const [formData, setFormData] = useState({
     type: "",
@@ -63,6 +64,67 @@ export default function VacationLayout() {
 
   const itemsPerPage = 5;
   const recommendationSearchDays = Number(recommendationPeriod);
+
+  const formatScheduleDate = (value) => {
+    if (!value) return "";
+
+    if (typeof value === "string") {
+      return value.includes("T") ? value.split("T")[0] : value.slice(0, 10);
+    }
+
+    return "";
+  };
+
+  const formatScheduleTime = (value) => {
+    if (!value || typeof value !== "string") return "";
+    if (!value.includes("T")) return "";
+
+    return value.split("T")[1]?.slice(0, 5) || "";
+  };
+
+  const normalizeSchedule = (schedule) => {
+    const start = schedule.startDatetime || schedule.startDateTime;
+    const end = schedule.endDatetime || schedule.endDateTime;
+
+    const typeMap = {
+      PERSONAL: "개인",
+      TEAM: "팀",
+      COMPANY: "전사",
+      HOLIDAY: "공휴일",
+      VACATION: "휴가",
+    };
+
+    return {
+      id: schedule.scheduleId,
+      title: schedule.title,
+      description: schedule.content,
+      date: formatScheduleDate(start),
+      endDate: formatScheduleDate(end),
+      startTime: formatScheduleTime(start),
+      endTime: formatScheduleTime(end),
+      type: schedule.isHoliday
+        ? "공휴일"
+        : typeMap[schedule.scheduleType] || "개인",
+      raw: schedule,
+    };
+  };
+
+  useEffect(() => {
+    const loadSchedules = async () => {
+      try {
+        const data = await scheduleApi.getMonthlySchedules();
+        const normalized = Array.isArray(data)
+          ? data.map(normalizeSchedule)
+          : [];
+
+        setCalendarEvents(normalized);
+      } catch (error) {
+        console.error("휴가 페이지 일정 조회 실패:", error);
+      }
+    };
+
+    loadSchedules();
+  }, []);
 
   const calculateDays = (start, end) => {
     if (!start || !end) return 0;
@@ -489,30 +551,6 @@ export default function VacationLayout() {
     return <Badge className={map[status] || map["대기"]}>{status}</Badge>;
   };
 
-  const datesWithEvents = Array.from(
-    new Set([
-      ...calendarEvents
-        .filter((event) => event.type !== "공휴일")
-        .map((event) => event.date),
-
-      ...visibleApprovedVacations.flatMap((vacation) => {
-        const result = [];
-        const cur = new Date(vacation.startDate);
-        const end = new Date(vacation.endDate);
-
-        while (cur <= end) {
-          result.push(cur.toISOString().split("T")[0]);
-          cur.setDate(cur.getDate() + 1);
-        }
-
-        return result;
-      }),
-    ])
-  ).map((dateStr) => {
-    const [y, m, d] = dateStr.split("-").map(Number);
-    return new Date(y, m - 1, d);
-  });
-
   const holidayDates = calendarEvents
     .filter((event) => event.type === "공휴일")
     .map((event) => {
@@ -590,7 +628,6 @@ export default function VacationLayout() {
     visibleApprovedVacations,
     vacationStatusList,
     recommendedVacations,
-    datesWithEvents,
     holidayDates,
 
     formatDate,
