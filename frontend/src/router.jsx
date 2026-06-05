@@ -24,8 +24,11 @@ import { SearchPage } from "@/pages/Search/SearchPage";
 import { InquiryPage } from "@/pages/Board/InquiryPage";
 import { ApprovalRequestPage } from "@/pages/Approval/ApprovalRequestPage";
 import { MyPage } from "@/pages/MyPage/MyPage";
+
 import { CommunityPage } from "@/pages/Community/CommunityPage";
+import { CommunityWritePage } from "@/pages/Community/CommunityWritePage";
 import { CommunityDetailPage } from "@/pages/Community/CommunityDetailPage";
+
 import { DocumentsPage } from "@/pages/Documents/DocumentsPage";
 
 import { LoginPage } from "@/pages/Auth/LoginPage";
@@ -63,15 +66,18 @@ export const router = createBrowserRouter([
       { path: "evaluation", Component: EvaluationPage },
       { path: "approval", Component: ApprovalPage },
       { path: "heart-letter", Component: HeartLetterPage },
+
+      // 커뮤니티
       { path: "community", Component: CommunityPage },
+
+      // 중요: write가 :postId보다 위에 있어야 함
+      { path: "community/write", Component: CommunityWritePage },
       { path: "community/:postId", Component: CommunityDetailPage },
+
       { path: "registration-approval", Component: RegistrationApprovalPage },
       { path: "search", Component: SearchPage },
       { path: "mypage", Component: MyPage },
-	  {
-	    path: "/documents",
-	    element: <DocumentsPage />,
-	  },
+      { path: "documents", Component: DocumentsPage },
     ],
   },
 

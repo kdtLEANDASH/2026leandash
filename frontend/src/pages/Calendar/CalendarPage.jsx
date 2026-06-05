@@ -22,8 +22,13 @@ import {
   SelectValue,
 } from "@/components/UI/select";
 import { scheduleApi } from "@/api/scheduleApi";
+import { useAppContext } from "@/store/AppProvider";
+import { cn } from "@/components/UI/utils";
 
 export function CalendarPage() {
+  const { customSettings } = useAppContext() || {};
+  const isDark = customSettings?.darkMode;
+
   const [date, setDate] = useState(new Date());
   const [events, setEvents] = useState([]);
   const [showDialog, setShowDialog] = useState(false);
@@ -38,6 +43,42 @@ export function CalendarPage() {
     type: "PERSONAL",
     description: "",
   });
+
+  const pageClass = isDark
+    ? "bg-[#27272a] text-white"
+    : "bg-gray-50 text-gray-900";
+
+  const cardClass = isDark
+    ? "bg-[#35353d] border-[#5c5c73] text-white"
+    : "bg-white border-gray-200";
+
+  const innerClass = isDark
+    ? "bg-[#48484f] border-[#5c5c73] text-white hover:bg-[#54545c]"
+    : "bg-white border-gray-200 hover:bg-gray-50";
+
+  const inputClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white placeholder:text-zinc-400"
+    : "";
+
+  const modalClass = isDark
+    ? "bg-[#35353d] border-[#5c5c73] text-white"
+    : "";
+
+  const selectContentClass = isDark
+    ? "bg-[#35353d] border-[#5c5c73] text-white"
+    : "";
+
+  const textMain = isDark ? "text-white" : "text-gray-900";
+  const textSub = isDark ? "text-zinc-300" : "text-gray-600";
+  const textMuted = isDark ? "text-zinc-400" : "text-gray-500";
+
+  const primaryButtonClass = isDark
+    ? "bg-[#5c5c73] hover:bg-[#6a6a82] text-white"
+    : "bg-blue-600 hover:bg-blue-700";
+
+  const outlineButtonClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white hover:bg-[#48484f]"
+    : "";
 
   const selectedYear = date.getFullYear();
   const selectedMonth = date.getMonth() + 1;
@@ -71,14 +112,6 @@ export function CalendarPage() {
     VACATION: "휴가",
   };
 
-  const typeValueMap = {
-    개인: "PERSONAL",
-    팀: "TEAM",
-    전사: "COMPANY",
-    공휴일: "HOLIDAY",
-    휴가: "VACATION",
-  };
-
   const normalizeEvent = (schedule) => {
     const startDate = formatDate(schedule.startDatetime || schedule.startDateTime);
     const endDate = formatDate(schedule.endDatetime || schedule.endDateTime);
@@ -108,9 +141,7 @@ export function CalendarPage() {
         selectedMonth
       );
 
-      const normalized = Array.isArray(data)
-        ? data.map(normalizeEvent)
-        : [];
+      const normalized = Array.isArray(data) ? data.map(normalizeEvent) : [];
 
       setEvents(normalized);
     } catch (error) {
@@ -134,20 +165,20 @@ export function CalendarPage() {
       const startTime = formData.startTime || "00:00";
       const endTime = formData.endTime || "23:59";
 
-	  const payload = {
-	    userId: 1,
-	    title: formData.title,
-	    content: formData.description,
-	    startDatetime: `${formData.date}T${startTime}:00`,
-	    endDatetime: `${formData.date}T${endTime}:00`,
-	    scheduleType: formData.type,
-	    isAllDay: !formData.startTime && !formData.endTime,
-	    departmentId: null,
-	    isOfficial: formData.type === "COMPANY",
-	    isHoliday: formData.type === "HOLIDAY",
-	    color: null,
-	    remindAt: null,
-	  };
+      const payload = {
+        userId: 1,
+        title: formData.title,
+        content: formData.description,
+        startDatetime: `${formData.date}T${startTime}:00`,
+        endDatetime: `${formData.date}T${endTime}:00`,
+        scheduleType: formData.type,
+        isAllDay: !formData.startTime && !formData.endTime,
+        departmentId: null,
+        isOfficial: formData.type === "COMPANY",
+        isHoliday: formData.type === "HOLIDAY",
+        color: null,
+        remindAt: null,
+      };
 
       await scheduleApi.createSchedule(payload);
 
@@ -194,12 +225,6 @@ export function CalendarPage() {
 
     return filteredEvents.filter((event) => event.date === selectedDateText);
   }, [date, filteredEvents]);
-
-  const datesWithEvents = useMemo(() => {
-    return events
-      .filter((event) => event.type !== "공휴일")
-      .map((event) => toLocalDate(event.date));
-  }, [events]);
 
   const personalDates = useMemo(() => {
     return events
@@ -254,26 +279,24 @@ export function CalendarPage() {
   }, [filteredEvents]);
 
   return (
-    <div className="p-6">
+    <div className={cn("p-6 min-h-full", pageClass)}>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-1">
+          <h2 className={cn("text-2xl font-semibold mb-1", textMain)}>
             캘린더
           </h2>
-          <p className="text-gray-600">
-            일정을 관리하고 사내 일정을 확인하세요
-          </p>
+          <p className={textSub}>일정을 관리하고 사내 일정을 확인하세요</p>
         </div>
 
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button className={primaryButtonClass}>
               <Plus className="size-5 mr-2" />
               일정 추가
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="max-w-2xl">
+          <DialogContent className={cn("max-w-2xl", modalClass)}>
             <DialogHeader>
               <DialogTitle>새 일정 추가</DialogTitle>
             </DialogHeader>
@@ -288,6 +311,7 @@ export function CalendarPage() {
                     setFormData({ ...formData, title: e.target.value })
                   }
                   placeholder="일정 제목을 입력하세요"
+                  className={inputClass}
                 />
               </div>
 
@@ -301,6 +325,7 @@ export function CalendarPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, date: e.target.value })
                     }
+                    className={inputClass}
                   />
                 </div>
 
@@ -312,10 +337,11 @@ export function CalendarPage() {
                       setFormData({ ...formData, type: value })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={inputClass}>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+
+                    <SelectContent className={selectContentClass}>
                       <SelectItem value="PERSONAL">개인</SelectItem>
                       <SelectItem value="TEAM">팀</SelectItem>
                       <SelectItem value="COMPANY">전사</SelectItem>
@@ -335,6 +361,7 @@ export function CalendarPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, startTime: e.target.value })
                     }
+                    className={inputClass}
                   />
                 </div>
 
@@ -347,6 +374,7 @@ export function CalendarPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, endTime: e.target.value })
                     }
+                    className={inputClass}
                   />
                 </div>
               </div>
@@ -364,6 +392,7 @@ export function CalendarPage() {
                   }
                   placeholder="일정 설명을 입력하세요"
                   rows={3}
+                  className={inputClass}
                 />
               </div>
 
@@ -371,7 +400,7 @@ export function CalendarPage() {
                 <Button
                   type="button"
                   onClick={handleAddEvent}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  className={cn("flex-1", primaryButtonClass)}
                 >
                   추가하기
                 </Button>
@@ -379,6 +408,7 @@ export function CalendarPage() {
                   type="button"
                   variant="outline"
                   onClick={() => setShowDialog(false)}
+                  className={outlineButtonClass}
                 >
                   취소
                 </Button>
@@ -390,10 +420,10 @@ export function CalendarPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
+          <Card className={cardClass}>
+            <CardHeader className={isDark ? "border-b border-[#5c5c73]" : ""}>
               <div className="flex items-center justify-between gap-4">
-                <CardTitle>월간 캘린더</CardTitle>
+                <CardTitle className={textMain}>월간 캘린더</CardTitle>
 
                 <div className="flex flex-wrap gap-2 justify-end">
                   {["전체", "개인", "팀", "전사", "휴가", "공휴일"].map(
@@ -405,8 +435,8 @@ export function CalendarPage() {
                         onClick={() => setFilterType(type)}
                         className={
                           filterType === type
-                            ? "bg-blue-600 hover:bg-blue-700"
-                            : ""
+                            ? primaryButtonClass
+                            : outlineButtonClass
                         }
                       >
                         {type}
@@ -419,7 +449,7 @@ export function CalendarPage() {
 
             <CardContent>
               {loading ? (
-                <div className="py-20 text-center text-gray-500">
+                <div className={cn("py-20 text-center", textMuted)}>
                   일정을 불러오는 중입니다...
                 </div>
               ) : (
@@ -429,17 +459,46 @@ export function CalendarPage() {
                   onSelect={(selected) => {
                     if (selected) setDate(selected);
                   }}
-                  className="rounded-md border"
-				  personalDates={personalDates}
-				  teamDates={teamDates}
-				  companyDates={companyDates}
-				  vacationDates={vacationDates}
-				  holidayDates={holidayDates}
+                  className={cn(
+                    "rounded-md border",
+                    isDark
+                      ? "bg-[#2f2f36] border-[#5c5c73] text-white"
+                      : ""
+                  )}
+                  classNames={{
+                    months:
+                      "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                    month: "space-y-4",
+                    caption: "flex justify-center pt-1 relative items-center",
+                    caption_label: "text-lg font-medium",
+                    nav: "space-x-1 flex items-center",
+                    nav_button: cn(
+                      "h-8 w-8 bg-transparent p-0 opacity-70 hover:opacity-100",
+                      isDark ? "hover:bg-[#48484f]" : ""
+                    ),
+                    table: "w-full border-collapse space-y-1",
+                    head_row: "flex",
+                    head_cell: cn(
+                      "rounded-md w-10 font-normal text-sm",
+                      isDark ? "text-zinc-300" : "text-gray-500"
+                    ),
+                    row: "flex w-full mt-2",
+                    cell: "h-10 w-10 text-center text-sm p-0 relative",
+                    day: cn(
+                      "h-10 w-10 p-0 font-normal rounded-md",
+                      isDark ? "hover:bg-[#48484f]" : ""
+                    ),
+                  }}
+                  personalDates={personalDates}
+                  teamDates={teamDates}
+                  companyDates={companyDates}
+                  vacationDates={vacationDates}
+                  holidayDates={holidayDates}
                 />
               )}
 
               <div className="mt-4">
-                <h4 className="font-semibold text-gray-900 mb-2">범례</h4>
+                <h4 className={cn("font-semibold mb-2", textMain)}>범례</h4>
                 <div className="flex flex-wrap gap-2">
                   <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">
                     개인
@@ -463,9 +522,9 @@ export function CalendarPage() {
         </div>
 
         <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>
+          <Card className={cardClass}>
+            <CardHeader className={isDark ? "border-b border-[#5c5c73]" : ""}>
+              <CardTitle className={textMain}>
                 {date
                   ? `${date.getMonth() + 1}월 ${date.getDate()}일 일정`
                   : "일정 선택"}
@@ -514,16 +573,16 @@ export function CalendarPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-8">
+                <p className={cn("text-center py-8", textMuted)}>
                   이 날짜에 일정이 없습니다
                 </p>
               )}
             </CardContent>
           </Card>
 
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>다가오는 일정</CardTitle>
+          <Card className={cn("mt-6", cardClass)}>
+            <CardHeader className={isDark ? "border-b border-[#5c5c73]" : ""}>
+              <CardTitle className={textMain}>다가오는 일정</CardTitle>
             </CardHeader>
 
             <CardContent>
@@ -532,14 +591,17 @@ export function CalendarPage() {
                   {upcomingEvents.map((event) => (
                     <div
                       key={event.id}
-                      className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
+                      className={cn(
+                        "flex items-start gap-3 p-2 rounded-lg cursor-pointer transition-colors",
+                        isDark ? "hover:bg-[#48484f]" : "hover:bg-gray-50"
+                      )}
                       onClick={() => setDate(toLocalDate(event.date))}
                     >
                       <div className="flex-1">
-                        <h5 className="font-medium text-gray-900 text-sm">
+                        <h5 className={cn("font-medium text-sm", textMain)}>
                           {event.title}
                         </h5>
-                        <p className="text-xs text-gray-600">
+                        <p className={cn("text-xs", textSub)}>
                           {toLocalDate(event.date).toLocaleDateString("ko-KR")}
                         </p>
                       </div>
@@ -551,7 +613,7 @@ export function CalendarPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-8">
+                <p className={cn("text-center py-8", textMuted)}>
                   다가오는 일정이 없습니다
                 </p>
               )}

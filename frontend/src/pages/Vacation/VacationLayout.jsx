@@ -15,7 +15,10 @@ export default function VacationLayout() {
     currentUser,
     employees,
     getVacationBalance,
+    customSettings,
   } = useAppContext();
+
+  const isDark = customSettings?.darkMode;
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -64,6 +67,17 @@ export default function VacationLayout() {
 
   const itemsPerPage = 5;
   const recommendationSearchDays = Number(recommendationPeriod);
+
+  const pageClass = isDark
+    ? "bg-[#27272a] text-white"
+    : "bg-gray-50 text-gray-900";
+
+  const sidebarClass = isDark
+    ? "bg-[#35353d] border-[#5c5c73]"
+    : "bg-white border-gray-200";
+
+  const textMain = isDark ? "text-white" : "text-gray-900";
+  const textMuted = isDark ? "text-zinc-400" : "text-gray-500";
 
   const formatScheduleDate = (value) => {
     if (!value) return "";
@@ -225,7 +239,7 @@ export default function VacationLayout() {
     : { total: 15, used: 0, remaining: 15 };
 
   const recommendedVacations = useMemo(() => {
-    if (!currentUser || isHrAdmin) return [];
+    if (!currentUser) return [];
 
     const todayDate = new Date();
 
@@ -467,14 +481,13 @@ export default function VacationLayout() {
         recommendationDaysFilter === "전체"
           ? true
           : recommendationDaysFilter === "1"
-            ? recommendation.days === 1
-            : recommendation.days >= 2;
+          ? recommendation.days === 1
+          : recommendation.days >= 2;
 
       return matchesType && matchesDays;
     });
   }, [
     currentUser,
-    isHrAdmin,
     calendarEvents,
     vacationRequests,
     employees,
@@ -582,6 +595,8 @@ export default function VacationLayout() {
     employees,
     calendarEvents,
 
+    isDark,
+
     isHrAdmin,
     isManager,
     canViewVacationStatus,
@@ -641,37 +656,44 @@ export default function VacationLayout() {
   const linkClass = ({ isActive }) =>
     cn(
       "w-full block text-left px-4 py-3 rounded-lg transition-colors text-sm font-medium",
-      isActive ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-50"
+      isActive
+        ? isDark
+          ? "bg-[#5c5c73] text-white"
+          : "bg-blue-50 text-blue-700"
+        : isDark
+        ? "text-zinc-300 hover:bg-[#48484f]"
+        : "text-gray-700 hover:bg-gray-50"
     );
 
   return (
-    <div className="flex h-full">
-      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
+    <div className={cn("flex h-full", pageClass)}>
+      <div className={cn("w-64 border-r flex flex-col", sidebarClass)}>
+        <div
+          className={cn(
+            "p-4 border-b",
+            isDark ? "border-[#5c5c73]" : "border-gray-200"
+          )}
+        >
+          <h2 className={cn("text-lg font-semibold", textMain)}>
             {canViewVacationStatus ? "휴가 관리 / 현황" : "휴가 관리"}
           </h2>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className={cn("text-xs mt-1", textMuted)}>
             {isHrAdmin ? "부서별 휴가 승인 및 반려" : "Vacation Management"}
           </p>
         </div>
 
         <div className="flex-1 p-3 space-y-2">
-          {!isHrAdmin && (
-            <>
-              <NavLink to="/vacation/info" className={linkClass}>
-                내 휴가 정보
-              </NavLink>
+          <NavLink to="/vacation/info" className={linkClass}>
+            내 휴가 정보
+          </NavLink>
 
-              <NavLink to="/vacation/recommend" className={linkClass}>
-                휴가 추천
-              </NavLink>
+          <NavLink to="/vacation/recommend" className={linkClass}>
+            휴가 추천
+          </NavLink>
 
-              <NavLink to="/vacation/request" className={linkClass}>
-                휴가 신청하기
-              </NavLink>
-            </>
-          )}
+          <NavLink to="/vacation/request" className={linkClass}>
+            휴가 신청하기
+          </NavLink>
 
           <NavLink to="/vacation/list" className={linkClass}>
             {isHrAdmin ? "휴가 승인/반려" : "신청 휴가 목록"}
@@ -685,9 +707,9 @@ export default function VacationLayout() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-gray-50 p-6">
+      <div className={cn("flex-1 overflow-auto p-6", pageClass)}>
         <div className="mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className={cn("text-xl font-semibold", textMain)}>
             {pageTitleMap[location.pathname] || "[ 휴가 관리 ]"}
           </h2>
         </div>

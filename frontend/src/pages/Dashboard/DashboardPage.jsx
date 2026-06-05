@@ -44,7 +44,12 @@ export function DashboardPage() {
   const textMain = isDark ? "text-zinc-100" : "text-gray-900";
   const textSub = isDark ? "text-zinc-300" : "text-gray-600";
   const textMuted = isDark ? "text-zinc-400" : "text-gray-500";
+
   const hoverClass = isDark ? "hover:!bg-zinc-500" : "hover:bg-gray-50";
+
+  const ghostButtonClass = isDark
+    ? "text-zinc-200 hover:!bg-zinc-600 hover:text-white"
+    : "";
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarEvents, setCalendarEvents] = useState([]);
@@ -264,7 +269,14 @@ export function DashboardPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-8 text-white">
+      <div
+        className={cn(
+          "rounded-2xl p-8 text-white",
+          isDark
+            ? "bg-[#5c5c73] border border-[#73738a]"
+            : "bg-gradient-to-r from-blue-600 to-blue-800"
+        )}
+      >
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2">
@@ -381,8 +393,10 @@ export function DashboardPage() {
                 <div
                   key={vacation.id}
                   className={cn(
-                    "flex items-center justify-between p-3 rounded-lg",
-                    isDark ? "bg-zinc-600" : "bg-orange-50"
+                    "flex items-center justify-between p-3 rounded-lg border",
+                    isDark
+                      ? "!bg-zinc-600 !border-zinc-500"
+                      : "bg-orange-50 border-orange-100"
                   )}
                 >
                   <div>
@@ -396,7 +410,15 @@ export function DashboardPage() {
                   </div>
 
                   <Link to="/vacation">
-                    <Button size="sm" variant="outline">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={
+                        isDark
+                          ? "!bg-zinc-700 !border-zinc-500 !text-zinc-100 hover:!bg-zinc-500"
+                          : ""
+                      }
+                    >
                       확인하기
                     </Button>
                   </Link>
@@ -421,7 +443,11 @@ export function DashboardPage() {
               </CardTitle>
 
               <Link to="/calendar">
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={ghostButtonClass}
+                >
                   전체 보기
                 </Button>
               </Link>
@@ -480,10 +506,7 @@ export function DashboardPage() {
                     {selectedDateEvents.map((event) => (
                       <div
                         key={event.id}
-                        className={cn(
-                          "p-3 border rounded-lg",
-                          innerCardClass
-                        )}
+                        className={cn("p-3 border rounded-lg", innerCardClass)}
                       >
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <span className={cn("text-sm font-medium", textMain)}>
@@ -526,7 +549,11 @@ export function DashboardPage() {
               </CardTitle>
 
               <Link to="/notice">
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={ghostButtonClass}
+                >
                   더보기
                 </Button>
               </Link>
@@ -645,7 +672,8 @@ export function DashboardPage() {
                   key={event.id}
                   className={cn(
                     "p-4 border rounded-lg transition-shadow",
-                    innerCardClass
+                    innerCardClass,
+                    hoverClass
                   )}
                 >
                   <div className="flex items-start justify-between mb-2">

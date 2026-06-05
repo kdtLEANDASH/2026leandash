@@ -16,12 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/UI/select";
+import { cn } from "@/components/UI/utils";
 
 export default function VacationListPage() {
   const {
+    isDark,
     isHrAdmin,
-    isManager,
     currentUser,
+    employees,
     cancelVacation,
     approveVacation,
     rejectVacation,
@@ -36,6 +38,50 @@ export default function VacationListPage() {
     itemsPerPage,
     getStatusBadge,
   } = useOutletContext();
+
+  const darkCardClass = isDark
+    ? "bg-[#35353d] border-[#5c5c73] text-white"
+    : "bg-white border-gray-200";
+
+  const darkInnerCardClass = isDark
+    ? "bg-[#35353d] border-[#5c5c73] text-white hover:bg-[#3f3f48]"
+    : "bg-white border-gray-200 hover:bg-gray-50";
+
+  const inputClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white placeholder:text-zinc-400"
+    : "";
+
+  const selectContentClass = isDark
+    ? "bg-[#35353d] border-[#5c5c73] text-white"
+    : "";
+
+  const outlineButtonClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white hover:bg-[#48484f]"
+    : "";
+
+  const activePageButtonClass = isDark
+    ? "bg-[#5c5c73] hover:bg-[#6a6a82] text-white"
+    : "";
+
+  const canApproveVacation = (vacation) => {
+    if (!currentUser) return false;
+
+    const targetEmployee = employees.find(
+      (emp) => emp.id === vacation.employeeId
+    );
+
+    if (currentUser.role === "최고관리자") return true;
+
+    if (currentUser.department === "인사팀" && currentUser.role === "팀장") {
+      return true;
+    }
+
+    if (currentUser.role === "팀장") {
+      return targetEmployee?.department === currentUser.department;
+    }
+
+    return false;
+  };
 
   const totalItems = filteredVacationRequests.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
@@ -64,45 +110,87 @@ export default function VacationListPage() {
     <div className="space-y-6">
       {isHrAdmin && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
+          <Card className={cn(darkCardClass)}>
             <CardContent className="p-5">
-              <div className="text-sm text-gray-600">전체 신청</div>
-              <div className="text-3xl font-bold text-gray-900">
+              <div
+                className={cn(
+                  "text-sm",
+                  isDark ? "text-zinc-300" : "text-gray-600"
+                )}
+              >
+                전체 신청
+              </div>
+              <div
+                className={cn(
+                  "text-3xl font-bold",
+                  isDark ? "text-white" : "text-gray-900"
+                )}
+              >
                 {visibleVacationRequests.length}
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={cn(darkCardClass)}>
             <CardContent className="p-5">
-              <div className="text-sm text-gray-600">대기</div>
+              <div
+                className={cn(
+                  "text-sm",
+                  isDark ? "text-zinc-300" : "text-gray-600"
+                )}
+              >
+                대기
+              </div>
               <div className="text-3xl font-bold text-yellow-600">
-                {visibleVacationRequests.filter((v) => v.status === "대기").length}
+                {
+                  visibleVacationRequests.filter((v) => v.status === "대기")
+                    .length
+                }
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={cn(darkCardClass)}>
             <CardContent className="p-5">
-              <div className="text-sm text-gray-600">승인</div>
+              <div
+                className={cn(
+                  "text-sm",
+                  isDark ? "text-zinc-300" : "text-gray-600"
+                )}
+              >
+                승인
+              </div>
               <div className="text-3xl font-bold text-green-600">
-                {visibleVacationRequests.filter((v) => v.status === "승인").length}
+                {
+                  visibleVacationRequests.filter((v) => v.status === "승인")
+                    .length
+                }
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={cn(darkCardClass)}>
             <CardContent className="p-5">
-              <div className="text-sm text-gray-600">반려</div>
+              <div
+                className={cn(
+                  "text-sm",
+                  isDark ? "text-zinc-300" : "text-gray-600"
+                )}
+              >
+                반려
+              </div>
               <div className="text-3xl font-bold text-red-600">
-                {visibleVacationRequests.filter((v) => v.status === "반려").length}
+                {
+                  visibleVacationRequests.filter((v) => v.status === "반려")
+                    .length
+                }
               </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      <Card>
+      <Card className={cn(darkCardClass)}>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
@@ -110,7 +198,12 @@ export default function VacationListPage() {
               {isHrAdmin ? "휴가 신청 내역 및 승인" : "휴가 신청 내역"}
             </span>
 
-            <span className="text-sm font-normal text-gray-600">
+            <span
+              className={cn(
+                "text-sm font-normal",
+                isDark ? "text-zinc-300" : "text-gray-600"
+              )}
+            >
               총 {filteredVacationRequests.length}건
             </span>
           </CardTitle>
@@ -124,17 +217,17 @@ export default function VacationListPage() {
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 placeholder="이름, 휴가유형, 사유로 검색"
-                className="pl-9"
+                className={cn("pl-9", inputClass)}
               />
             </div>
 
             <div className="w-full md:w-48">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
+                <SelectTrigger className={inputClass}>
                   <SelectValue placeholder="상태 선택" />
                 </SelectTrigger>
 
-                <SelectContent>
+                <SelectContent className={selectContentClass}>
                   <SelectItem value="전체">전체</SelectItem>
                   <SelectItem value="대기">대기</SelectItem>
                   <SelectItem value="승인">승인</SelectItem>
@@ -145,7 +238,12 @@ export default function VacationListPage() {
           </div>
 
           {filteredVacationRequests.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div
+              className={cn(
+                "text-center py-12",
+                isDark ? "text-zinc-400" : "text-gray-500"
+              )}
+            >
               <CalendarIcon className="size-12 mx-auto mb-3 text-gray-400" />
               <p>조건에 맞는 휴가 신청 내역이 없습니다</p>
             </div>
@@ -155,50 +253,83 @@ export default function VacationListPage() {
                 {paginatedVacationRequests.map((vacation) => (
                   <div
                     key={vacation.id}
-                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    className={cn(
+                      "p-4 border rounded-lg transition-colors",
+                      darkInnerCardClass
+                    )}
                   >
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center flex-wrap gap-2 mb-2">
-                          <span className="font-semibold text-gray-900">
+                          <span
+                            className={cn(
+                              "font-semibold",
+                              isDark ? "text-white" : "text-gray-900"
+                            )}
+                          >
                             {vacation.type}
                           </span>
 
                           {getStatusBadge(vacation.status)}
 
-                          <span className="text-sm text-gray-600">
+                          <span
+                            className={cn(
+                              "text-sm",
+                              isDark ? "text-zinc-300" : "text-gray-600"
+                            )}
+                          >
                             {vacation.employeeName}
                           </span>
                         </div>
 
-                        <div className="text-sm text-gray-600 mb-1">
+                        <div
+                          className={cn(
+                            "text-sm mb-1",
+                            isDark ? "text-zinc-300" : "text-gray-600"
+                          )}
+                        >
                           {vacation.startDate} ~ {vacation.endDate} (
                           {vacation.days}일)
                         </div>
 
-                        <div className="text-sm text-gray-700 mb-1">
+                        <div
+                          className={cn(
+                            "text-sm mb-1",
+                            isDark ? "text-zinc-200" : "text-gray-700"
+                          )}
+                        >
                           사유: {vacation.reason}
                         </div>
 
-                        <div className="text-xs text-gray-500">
+                        <div
+                          className={cn(
+                            "text-xs",
+                            isDark ? "text-zinc-400" : "text-gray-500"
+                          )}
+                        >
                           신청일: {vacation.requestDate}
-                          {vacation.approver && ` · 처리자: ${vacation.approver}`}
+                          {vacation.approver &&
+                            ` · 처리자: ${vacation.approver}`}
                         </div>
                       </div>
 
                       {vacation.status === "대기" && (
                         <div className="flex gap-2">
-                          {isManager && (
+                          {canApproveVacation(vacation) && (
                             <>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() =>
-                                  currentUser &&
-                                  (approveVacation(vacation.id, currentUser.name),
-                                  alert("휴가를 승인했습니다."))
+                                onClick={() => {
+                                  if (!currentUser) return;
+                                  approveVacation(vacation.id, currentUser.name);
+                                  alert("휴가를 승인했습니다.");
+                                }}
+                                className={
+                                  isDark
+                                    ? "border-green-400 text-green-300 hover:bg-green-950"
+                                    : "text-green-600 hover:text-green-700 hover:bg-green-50"
                                 }
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
                               >
                                 <CheckCircle2 className="size-4 mr-1" />
                                 승인
@@ -207,12 +338,16 @@ export default function VacationListPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() =>
-                                  currentUser &&
-                                  (rejectVacation(vacation.id, currentUser.name),
-                                  alert("휴가를 반려했습니다."))
+                                onClick={() => {
+                                  if (!currentUser) return;
+                                  rejectVacation(vacation.id, currentUser.name);
+                                  alert("휴가를 반려했습니다.");
+                                }}
+                                className={
+                                  isDark
+                                    ? "border-red-400 text-red-300 hover:bg-red-950"
+                                    : "text-red-600 hover:text-red-700 hover:bg-red-50"
                                 }
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               >
                                 <XCircle className="size-4 mr-1" />
                                 반려
@@ -220,26 +355,31 @@ export default function VacationListPage() {
                             </>
                           )}
 
-                          {vacation.employeeId === currentUser?.id && !isManager && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                cancelVacation(vacation.id);
-                                alert("휴가 신청을 취소했습니다.");
+                          {vacation.employeeId === currentUser?.id &&
+                            !canApproveVacation(vacation) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  cancelVacation(vacation.id);
+                                  alert("휴가 신청을 취소했습니다.");
 
-                                if (
-                                  paginatedVacationRequests.length === 1 &&
-                                  currentPage > 1
-                                ) {
-                                  setCurrentPage(currentPage - 1);
+                                  if (
+                                    paginatedVacationRequests.length === 1 &&
+                                    currentPage > 1
+                                  ) {
+                                    setCurrentPage(currentPage - 1);
+                                  }
+                                }}
+                                className={
+                                  isDark
+                                    ? "border-red-400 text-red-300 hover:bg-red-950"
+                                    : "text-red-600 hover:text-red-700 hover:bg-red-50"
                                 }
-                              }}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              취소
-                            </Button>
-                          )}
+                              >
+                                취소
+                              </Button>
+                            )}
                         </div>
                       )}
                     </div>
@@ -254,6 +394,7 @@ export default function VacationListPage() {
                     size="sm"
                     disabled={currentPage === 1}
                     onClick={() => handlePageChange(currentPage - 1)}
+                    className={outlineButtonClass}
                   >
                     이전
                   </Button>
@@ -265,7 +406,12 @@ export default function VacationListPage() {
                         size="sm"
                         variant={currentPage === page ? "default" : "outline"}
                         onClick={() => handlePageChange(page)}
-                        className="min-w-9"
+                        className={cn(
+                          "min-w-9",
+                          currentPage === page
+                            ? activePageButtonClass
+                            : outlineButtonClass
+                        )}
                       >
                         {page}
                       </Button>
@@ -277,6 +423,7 @@ export default function VacationListPage() {
                     size="sm"
                     disabled={currentPage === totalPages}
                     onClick={() => handlePageChange(currentPage + 1)}
+                    className={outlineButtonClass}
                   >
                     다음
                   </Button>

@@ -40,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/UI/dropdown-menu";
 import { ChatWidget } from "@/components/Chat/ChatWidget";
+import { ChatBotWidget } from "@/components/Chat/ChatBotWidget";
 
 const DEFAULT_HEADER_ORDER = [
   "/dashboard",
@@ -55,6 +56,17 @@ const DEFAULT_HEADER_ORDER = [
   "/approval",
   "/registration-approval",
 ];
+
+const DARK = {
+  page: "bg-[#27272a] text-zinc-100",
+  header: "bg-zinc-700 border-zinc-600",
+  card: "bg-[#35353d] border-[#5c5c73] text-white",
+  inner: "bg-[#2f2f36] border-[#5c5c73] text-white",
+  hover: "hover:bg-[#48484f]",
+  accent: "bg-[#5c5c73] hover:bg-[#6a6a82] text-white",
+  muted: "text-zinc-400",
+  sub: "text-zinc-300",
+};
 
 export function MainLayout() {
   const location = useLocation();
@@ -79,6 +91,8 @@ export function MainLayout() {
     headerOrder: DEFAULT_HEADER_ORDER,
     ...customSettings,
   };
+
+  const isDark = settings.darkMode;
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -429,22 +443,17 @@ export function MainLayout() {
   const showNavText =
     settings.headerDisplayMode === "iconText" ||
     settings.headerDisplayMode === "textOnly";
-
-  return (
+      return (
     <div
       className={cn(
         "flex flex-col min-h-screen",
-        settings.darkMode
-          ? "dark bg-zinc-800 text-zinc-100"
-          : "bg-gray-50 text-gray-900"
+        isDark ? `dark ${DARK.page}` : "bg-gray-50 text-gray-900"
       )}
     >
       <header
         className={cn(
           "sticky top-0 z-40 border-b",
-          settings.darkMode
-            ? "bg-zinc-700 border-zinc-600"
-            : "bg-white border-gray-200"
+          isDark ? DARK.header : "bg-white border-gray-200"
         )}
       >
         <div className={cn("flex items-center px-6", headerHeightClass)}>
@@ -452,7 +461,7 @@ export function MainLayout() {
             to={isLoggedIn ? "/dashboard" : "/"}
             className={cn(
               "flex items-center mr-8 rounded-lg transition-colors",
-              settings.darkMode ? "bg-zinc-600 px-2 py-1" : ""
+              isDark ? "bg-zinc-600 px-2 py-1" : ""
             )}
           >
             <img
@@ -484,8 +493,10 @@ export function MainLayout() {
                     "relative flex shrink-0 items-center gap-1.5 whitespace-nowrap font-medium leading-normal transition-colors py-2",
                     navTextClass,
                     active
-                      ? "text-blue-500"
-                      : settings.darkMode
+                      ? isDark
+                        ? "text-zinc-400"
+                        : "text-blue-500"
+                      : isDark
                       ? "text-slate-200 hover:text-white"
                       : "text-gray-600 hover:text-gray-900"
                   )}
@@ -521,7 +532,12 @@ export function MainLayout() {
             {!isLoggedIn ? (
               <Button
                 variant="outline"
-                className="flex items-center gap-2"
+                className={cn(
+                  "flex items-center gap-2",
+                  isDark
+                    ? "bg-[#2f2f36] border-[#5c5c73] text-white hover:bg-[#48484f]"
+                    : ""
+                )}
                 onClick={() => navigate("/login")}
               >
                 <User className="size-4" />
@@ -533,8 +549,8 @@ export function MainLayout() {
                   variant="outline"
                   className={cn(
                     "flex items-center gap-2",
-                    settings.darkMode
-                      ? "bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-700"
+                    isDark
+                      ? "bg-[#2f2f36] border-[#5c5c73] text-white hover:bg-[#48484f]"
                       : ""
                   )}
                   onClick={() => navigate("/mypage")}
@@ -547,8 +563,8 @@ export function MainLayout() {
                   <button
                     className={cn(
                       "relative p-2 rounded-lg transition-colors",
-                      settings.darkMode
-                        ? "hover:bg-slate-800"
+                      isDark
+                        ? "text-zinc-200 hover:bg-[#48484f]"
                         : "hover:bg-gray-100"
                     )}
                     onClick={() => {
@@ -559,7 +575,7 @@ export function MainLayout() {
                     <Settings
                       className={cn(
                         "size-5",
-                        settings.darkMode ? "text-slate-200" : "text-gray-600"
+                        isDark ? "text-zinc-200" : "text-gray-600"
                       )}
                     />
                   </button>
@@ -568,26 +584,22 @@ export function MainLayout() {
                     <div
                       className={cn(
                         "absolute right-0 top-11 z-50 w-[420px] rounded-xl border shadow-lg",
-                        settings.darkMode
-                          ? "border-slate-700 bg-slate-900 text-slate-100"
+                        isDark
+                          ? DARK.card
                           : "border-gray-200 bg-white text-gray-900"
                       )}
                     >
                       <div
                         className={cn(
                           "px-4 py-3 border-b",
-                          settings.darkMode
-                            ? "border-slate-700"
-                            : "border-gray-100"
+                          isDark ? "border-[#5c5c73]" : "border-gray-100"
                         )}
                       >
                         <h3 className="font-semibold">환경 설정</h3>
                         <p
                           className={cn(
                             "text-xs",
-                            settings.darkMode
-                              ? "text-slate-400"
-                              : "text-gray-500"
+                            isDark ? DARK.muted : "text-gray-500"
                           )}
                         >
                           화면 모드, 알림, 헤더 구성을 변경할 수 있습니다.
@@ -604,9 +616,7 @@ export function MainLayout() {
                               <div
                                 className={cn(
                                   "text-xs",
-                                  settings.darkMode
-                                    ? "text-slate-400"
-                                    : "text-gray-500"
+                                  isDark ? DARK.muted : "text-gray-500"
                                 )}
                               >
                                 전체 화면을 어두운 모드로 변경합니다.
@@ -622,17 +632,13 @@ export function MainLayout() {
                               }
                               className={cn(
                                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                                settings.darkMode
-                                  ? "bg-blue-600"
-                                  : "bg-gray-300"
+                                isDark ? "bg-[#5c5c73]" : "bg-gray-300"
                               )}
                             >
                               <span
                                 className={cn(
                                   "inline-block size-5 transform rounded-full bg-white transition-transform",
-                                  settings.darkMode
-                                    ? "translate-x-5"
-                                    : "translate-x-1"
+                                  isDark ? "translate-x-5" : "translate-x-1"
                                 )}
                               />
                             </button>
@@ -646,9 +652,7 @@ export function MainLayout() {
                               <div
                                 className={cn(
                                   "text-xs",
-                                  settings.darkMode
-                                    ? "text-slate-400"
-                                    : "text-gray-500"
+                                  isDark ? DARK.muted : "text-gray-500"
                                 )}
                               >
                                 공지사항과 휴가 처리 알림을 표시합니다.
@@ -666,7 +670,9 @@ export function MainLayout() {
                               className={cn(
                                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
                                 settings.notificationEnabled
-                                  ? "bg-blue-600"
+                                  ? isDark
+                                    ? "bg-[#5c5c73]"
+                                    : "bg-blue-600"
                                   : "bg-gray-300"
                               )}
                             >
@@ -701,9 +707,11 @@ export function MainLayout() {
                                 className={cn(
                                   "rounded-lg border px-3 py-2 text-sm transition-colors",
                                   settings.headerSize === option.value
-                                    ? "border-blue-600 bg-blue-50 text-blue-700"
-                                    : settings.darkMode
-                                    ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                                    ? isDark
+                                      ? "border-[#5c5c73] bg-[#5c5c73] text-white"
+                                      : "border-blue-600 bg-blue-50 text-blue-700"
+                                    : isDark
+                                    ? "border-[#5c5c73] bg-[#2f2f36] text-zinc-200 hover:bg-[#48484f]"
                                     : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                                 )}
                               >
@@ -734,9 +742,11 @@ export function MainLayout() {
                                 className={cn(
                                   "rounded-lg border px-2 py-2 text-xs transition-colors",
                                   settings.headerDisplayMode === option.value
-                                    ? "border-blue-600 bg-blue-50 text-blue-700"
-                                    : settings.darkMode
-                                    ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                                    ? isDark
+                                      ? "border-[#5c5c73] bg-[#5c5c73] text-white"
+                                      : "border-blue-600 bg-blue-50 text-blue-700"
+                                    : isDark
+                                    ? "border-[#5c5c73] bg-[#2f2f36] text-zinc-200 hover:bg-[#48484f]"
                                     : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                                 )}
                               >
@@ -755,9 +765,7 @@ export function MainLayout() {
                               <div
                                 className={cn(
                                   "text-xs",
-                                  settings.darkMode
-                                    ? "text-slate-400"
-                                    : "text-gray-500"
+                                  isDark ? DARK.muted : "text-gray-500"
                                 )}
                               >
                                 위/아래 버튼으로 순서를 바꿀 수 있습니다.
@@ -770,8 +778,8 @@ export function MainLayout() {
                               size="sm"
                               onClick={resetHeaderSettings}
                               className={
-                                settings.darkMode
-                                  ? "bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-700"
+                                isDark
+                                  ? "bg-[#2f2f36] border-[#5c5c73] text-white hover:bg-[#48484f]"
                                   : ""
                               }
                             >
@@ -785,8 +793,8 @@ export function MainLayout() {
                                 key={item.path}
                                 className={cn(
                                   "flex items-center justify-between gap-2 rounded-lg border px-3 py-2",
-                                  settings.darkMode
-                                    ? "border-slate-700 bg-slate-800"
+                                  isDark
+                                    ? "border-[#5c5c73] bg-[#2f2f36]"
                                     : "border-gray-200 bg-gray-50"
                                 )}
                               >
@@ -806,8 +814,8 @@ export function MainLayout() {
                                     }
                                     className={cn(
                                       "rounded-md p-1.5 transition-colors disabled:opacity-30",
-                                      settings.darkMode
-                                        ? "hover:bg-slate-700"
+                                      isDark
+                                        ? "hover:bg-[#48484f]"
                                         : "hover:bg-gray-200"
                                     )}
                                   >
@@ -824,8 +832,8 @@ export function MainLayout() {
                                     }
                                     className={cn(
                                       "rounded-md p-1.5 transition-colors disabled:opacity-30",
-                                      settings.darkMode
-                                        ? "hover:bg-slate-700"
+                                      isDark
+                                        ? "hover:bg-[#48484f]"
                                         : "hover:bg-gray-200"
                                     )}
                                   >
@@ -837,8 +845,8 @@ export function MainLayout() {
                                     onClick={() => hideHeaderItem(item.path)}
                                     className={cn(
                                       "rounded-md p-1.5 transition-colors",
-                                      settings.darkMode
-                                        ? "hover:bg-slate-700"
+                                      isDark
+                                        ? "hover:bg-[#48484f]"
                                         : "hover:bg-gray-200"
                                     )}
                                   >
@@ -860,8 +868,8 @@ export function MainLayout() {
                                   key={item.path}
                                   className={cn(
                                     "flex items-center justify-between gap-2 rounded-lg border px-3 py-2",
-                                    settings.darkMode
-                                      ? "border-slate-700 bg-slate-800"
+                                    isDark
+                                      ? "border-[#5c5c73] bg-[#2f2f36]"
                                       : "border-gray-200 bg-gray-50"
                                   )}
                                 >
@@ -877,8 +885,8 @@ export function MainLayout() {
                                     onClick={() => showHeaderItem(item.path)}
                                     className={cn(
                                       "rounded-md p-1.5 transition-colors",
-                                      settings.darkMode
-                                        ? "hover:bg-slate-700"
+                                      isDark
+                                        ? "hover:bg-[#48484f]"
                                         : "hover:bg-gray-200"
                                     )}
                                   >
@@ -894,17 +902,15 @@ export function MainLayout() {
                       <div
                         className={cn(
                           "border-t p-2",
-                          settings.darkMode
-                            ? "border-slate-700"
-                            : "border-gray-100"
+                          isDark ? "border-[#5c5c73]" : "border-gray-100"
                         )}
                       >
                         <button
                           onClick={() => setShowSettings(false)}
                           className={cn(
                             "w-full rounded-lg px-3 py-2 text-sm transition-colors",
-                            settings.darkMode
-                              ? "text-slate-200 hover:bg-slate-800"
+                            isDark
+                              ? "text-zinc-200 hover:bg-[#48484f]"
                               : "text-gray-600 hover:bg-gray-50"
                           )}
                         >
@@ -919,9 +925,7 @@ export function MainLayout() {
                   <button
                     className={cn(
                       "relative p-2 rounded-lg transition-colors",
-                      settings.darkMode
-                        ? "hover:bg-slate-800"
-                        : "hover:bg-gray-100"
+                      isDark ? "hover:bg-[#48484f]" : "hover:bg-gray-100"
                     )}
                     onClick={() => {
                       if (!settings.notificationEnabled) {
@@ -936,7 +940,7 @@ export function MainLayout() {
                     <Bell
                       className={cn(
                         "size-5",
-                        settings.darkMode ? "text-slate-200" : "text-gray-600"
+                        isDark ? "text-zinc-200" : "text-gray-600"
                       )}
                     />
 
@@ -949,35 +953,20 @@ export function MainLayout() {
                     <div
                       className={cn(
                         "absolute right-0 top-11 z-50 w-80 rounded-xl border shadow-lg",
-                        settings.darkMode
-                          ? "border-slate-700 bg-slate-900"
-                          : "border-gray-200 bg-white"
+                        isDark ? DARK.card : "border-gray-200 bg-white"
                       )}
                     >
                       <div
                         className={cn(
                           "px-4 py-3 border-b",
-                          settings.darkMode
-                            ? "border-slate-700"
-                            : "border-gray-100"
+                          isDark ? "border-[#5c5c73]" : "border-gray-100"
                         )}
                       >
-                        <h3
-                          className={cn(
-                            "font-semibold",
-                            settings.darkMode
-                              ? "text-slate-100"
-                              : "text-gray-900"
-                          )}
-                        >
-                          알림
-                        </h3>
+                        <h3 className="font-semibold">알림</h3>
                         <p
                           className={cn(
                             "text-xs",
-                            settings.darkMode
-                              ? "text-slate-400"
-                              : "text-gray-500"
+                            isDark ? DARK.muted : "text-gray-500"
                           )}
                         >
                           최근 공지사항과 휴가 처리 결과를 확인하세요.
@@ -990,9 +979,7 @@ export function MainLayout() {
                             <div
                               className={cn(
                                 "mb-2 text-xs font-semibold",
-                                settings.darkMode
-                                  ? "text-slate-400"
-                                  : "text-gray-500"
+                                isDark ? DARK.muted : "text-gray-500"
                               )}
                             >
                               최근 공지사항
@@ -1012,17 +999,15 @@ export function MainLayout() {
                                   }}
                                   className={cn(
                                     "w-full rounded-lg px-3 py-2 text-left transition-colors",
-                                    settings.darkMode
-                                      ? "bg-slate-800 hover:bg-slate-700"
+                                    isDark
+                                      ? "bg-[#2f2f36] hover:bg-[#48484f]"
                                       : "bg-gray-50 hover:bg-gray-100"
                                   )}
                                 >
                                   <div
                                     className={cn(
                                       "text-sm font-medium line-clamp-1",
-                                      settings.darkMode
-                                        ? "text-slate-100"
-                                        : "text-gray-900"
+                                      isDark ? "text-white" : "text-gray-900"
                                     )}
                                   >
                                     {notice.title}
@@ -1030,9 +1015,7 @@ export function MainLayout() {
                                   <div
                                     className={cn(
                                       "mt-1 text-xs",
-                                      settings.darkMode
-                                        ? "text-slate-400"
-                                        : "text-gray-500"
+                                      isDark ? DARK.muted : "text-gray-500"
                                     )}
                                   >
                                     {notice.date ||
@@ -1049,17 +1032,13 @@ export function MainLayout() {
                           <div
                             className={cn(
                               "p-3 border-t",
-                              settings.darkMode
-                                ? "border-slate-700"
-                                : "border-gray-100"
+                              isDark ? "border-[#5c5c73]" : "border-gray-100"
                             )}
                           >
                             <div
                               className={cn(
                                 "mb-2 text-xs font-semibold",
-                                settings.darkMode
-                                  ? "text-slate-400"
-                                  : "text-gray-500"
+                                isDark ? DARK.muted : "text-gray-500"
                               )}
                             >
                               휴가 승인 / 반려 결과
@@ -1079,8 +1058,8 @@ export function MainLayout() {
                                   }}
                                   className={cn(
                                     "w-full rounded-lg px-3 py-2 text-left transition-colors",
-                                    settings.darkMode
-                                      ? "bg-slate-800 hover:bg-slate-700"
+                                    isDark
+                                      ? "bg-[#2f2f36] hover:bg-[#48484f]"
                                       : "bg-gray-50 hover:bg-gray-100"
                                   )}
                                 >
@@ -1088,9 +1067,7 @@ export function MainLayout() {
                                     <div
                                       className={cn(
                                         "text-sm font-medium",
-                                        settings.darkMode
-                                          ? "text-slate-100"
-                                          : "text-gray-900"
+                                        isDark ? "text-white" : "text-gray-900"
                                       )}
                                     >
                                       {request.type || "휴가 신청"}
@@ -1110,9 +1087,7 @@ export function MainLayout() {
                                   <div
                                     className={cn(
                                       "mt-1 text-xs",
-                                      settings.darkMode
-                                        ? "text-slate-400"
-                                        : "text-gray-500"
+                                      isDark ? DARK.muted : "text-gray-500"
                                     )}
                                   >
                                     {request.startDate} ~ {request.endDate}
@@ -1127,9 +1102,7 @@ export function MainLayout() {
                           <div
                             className={cn(
                               "px-4 py-10 text-center text-sm",
-                              settings.darkMode
-                                ? "text-slate-400"
-                                : "text-gray-500"
+                              isDark ? DARK.muted : "text-gray-500"
                             )}
                           >
                             확인할 알림이 없습니다.
@@ -1140,9 +1113,7 @@ export function MainLayout() {
                       <div
                         className={cn(
                           "border-t p-2",
-                          settings.darkMode
-                            ? "border-slate-700"
-                            : "border-gray-100"
+                          isDark ? "border-[#5c5c73]" : "border-gray-100"
                         )}
                       >
                         {hasAlarmItems && (
@@ -1163,7 +1134,12 @@ export function MainLayout() {
                               ]);
                               setShowNotifications(false);
                             }}
-                            className="w-full rounded-lg px-3 py-2 text-sm text-blue-600 hover:bg-blue-50"
+                            className={cn(
+                              "w-full rounded-lg px-3 py-2 text-sm",
+                              isDark
+                                ? "text-[#d8d8e3] hover:bg-[#48484f]"
+                                : "text-blue-600 hover:bg-blue-50"
+                            )}
                           >
                             모두 확인
                           </button>
@@ -1173,8 +1149,8 @@ export function MainLayout() {
                           onClick={() => setShowNotifications(false)}
                           className={cn(
                             "w-full rounded-lg px-3 py-2 text-sm transition-colors",
-                            settings.darkMode
-                              ? "text-slate-200 hover:bg-slate-800"
+                            isDark
+                              ? "text-zinc-200 hover:bg-[#48484f]"
                               : "text-gray-600 hover:bg-gray-50"
                           )}
                         >
@@ -1190,9 +1166,7 @@ export function MainLayout() {
                     <button
                       className={cn(
                         "flex items-center gap-2 rounded-lg p-2 transition-colors",
-                        settings.darkMode
-                          ? "hover:bg-slate-800"
-                          : "hover:bg-gray-50"
+                        isDark ? "hover:bg-[#48484f]" : "hover:bg-gray-50"
                       )}
                     >
                       <div className="relative">
@@ -1203,7 +1177,7 @@ export function MainLayout() {
                         <div
                           className={cn(
                             "absolute bottom-0 right-0 size-2.5 rounded-full border-2",
-                            settings.darkMode ? "border-slate-900" : "border-white",
+                            isDark ? "border-[#35353d]" : "border-white",
                             getStatusColor(loginUser?.status || "오프라인")
                           )}
                         ></div>
@@ -1212,24 +1186,52 @@ export function MainLayout() {
                       <ChevronDown
                         className={cn(
                           "size-4",
-                          settings.darkMode ? "text-slate-400" : "text-gray-400"
+                          isDark ? "text-zinc-400" : "text-gray-400"
                         )}
                       />
                     </button>
                   </DropdownMenuTrigger>
 
-                  <DropdownMenuContent align="end" className="w-56">
-                    <div className="px-2 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900">
+                  <DropdownMenuContent
+                    align="end"
+                    className={cn(
+                      "w-56",
+                      isDark
+                        ? "bg-[#35353d] border-[#5c5c73] text-white"
+                        : ""
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "px-2 py-2 border-b",
+                        isDark ? "border-[#5c5c73]" : "border-gray-100"
+                      )}
+                    >
+                      <p
+                        className={cn(
+                          "text-sm font-medium",
+                          isDark ? "text-white" : "text-gray-900"
+                        )}
+                      >
                         {loginUser?.name}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p
+                        className={cn(
+                          "text-xs",
+                          isDark ? "text-zinc-400" : "text-gray-500"
+                        )}
+                      >
                         {loginUser?.email}
                       </p>
                     </div>
 
                     <div className="p-2">
-                      <div className="text-xs text-gray-500 mb-2 px-2">
+                      <div
+                        className={cn(
+                          "text-xs mb-2 px-2",
+                          isDark ? "text-zinc-400" : "text-gray-500"
+                        )}
+                      >
                         상태 변경
                       </div>
 
@@ -1237,7 +1239,14 @@ export function MainLayout() {
                         value={loginUser?.status || "업무 중"}
                         onValueChange={handleStatusChange}
                       >
-                        <SelectTrigger className="h-8 text-xs">
+                        <SelectTrigger
+                          className={cn(
+                            "h-8 text-xs",
+                            isDark
+                              ? "bg-[#2f2f36] border-[#5c5c73] text-white"
+                              : ""
+                          )}
+                        >
                           <SelectValue>
                             <div className="flex items-center gap-2">
                               <div
@@ -1251,7 +1260,13 @@ export function MainLayout() {
                           </SelectValue>
                         </SelectTrigger>
 
-                        <SelectContent>
+                        <SelectContent
+                          className={
+                            isDark
+                              ? "bg-[#35353d] border-[#5c5c73] text-white"
+                              : ""
+                          }
+                        >
                           <SelectItem value="업무 중">
                             <div className="flex items-center gap-2">
                               <div className="size-2 rounded-full bg-green-500"></div>
@@ -1290,10 +1305,18 @@ export function MainLayout() {
                       </Select>
                     </div>
 
-                    <div className="border-t border-gray-100">
+                    <div
+                      className={cn(
+                        "border-t",
+                        isDark ? "border-[#5c5c73]" : "border-gray-100"
+                      )}
+                    >
                       <DropdownMenuItem
                         onClick={handleLogout}
-                        className="text-red-600 cursor-pointer"
+                        className={cn(
+                          "text-red-600 cursor-pointer",
+                          isDark ? "focus:bg-[#48484f]" : ""
+                        )}
                       >
                         <LogOut className="size-4 mr-2" />
                         로그아웃
@@ -1307,11 +1330,12 @@ export function MainLayout() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto">
+      <main className={cn("flex-1 overflow-auto", isDark ? "bg-[#27272a]" : "")}>
         <Outlet />
       </main>
 
       <ChatWidget />
+      <ChatBotWidget />
     </div>
   );
 }
