@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppContext } from "@/store/AppProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/UI/card";
 import { Badge } from "@/components/UI/badge";
@@ -15,26 +15,31 @@ import {
   Users,
 } from "lucide-react";
 
+import {
+  getDepartmentsApi,
+  getDepartmentUsersApi,
+} from "@/api/departmentApi";
+
+import {
+  getEvaluationsApi,
+  createEvaluationApi,
+} from "@/api/evaluationApi";
+
 export function EvaluationPage() {
-  const { currentUser, employees } = useAppContext();
+  const { currentUser, employees = [] } = useAppContext();
 
-  const isHrUser = currentUser?.department === "인사팀";
-  const isAdmin = currentUser?.role === "최고관리자";
+  const employeeListRef = useRef(null);
 
-  const departments = useMemo(() => {
-    return [...new Set(employees.map((emp) => emp.department))]
-      .filter((dept) => dept !== "경영진")
-      .filter((dept) => (isHrUser || isAdmin ? true : dept === currentUser.department));
-  }, [employees, currentUser, isHrUser, isAdmin]);
-
-  const [selectedDepartment, setSelectedDepartment] = useState(
-    isHrUser || isAdmin ? departments.find((dept) => dept !== "인사팀") || departments[0] : currentUser.department
-  );
-
+  const [apiDepartments, setApiDepartments] = useState([]);
+  const [apiEmployees, setApiEmployees] = useState([]);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [evaluationRecords, setEvaluationRecords] = useState([]);
 
-  const employeeListRef = useRef(null);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [form, setForm] = useState({
     performance: 4,
@@ -45,12 +50,162 @@ export function EvaluationPage() {
     comment: "",
   });
 
-  const targetEmployees = employees.filter(
-    (emp) => emp.department === selectedDepartment && emp.role !== "최고관리자"
-  );
+  const currentDepartment =
+    currentUser?.department ||
+    currentUser?.departmentName ||
+    localStorage.getItem("userDepartment") ||
+    "";
 
-  const selectedEmployee = employees.find(
-    (emp) => String(emp.id) === String(selectedEmployeeId)
+  const currentUserId =
+    currentUser?.userId ||
+    currentUser?.id ||
+    Number(localStorage.getItem("userId")) ||
+    null;
+
+  const isHrUser = currentDepartment === "?�사?�";
+
+  const isAdmin =
+    currentUser?.role === "최고관리자" ||
+    currentUser?.role === "ADMIN" ||
+    localStorage.getItem("userRole") === "ADMIN";
+
+  const fallbackDepartments = useMemo(() => {
+    return [
+      ...new Set(
+        (employees || [])
+          .map((emp) => emp?.department || emp?.departmentName)
+          .filter(Boolean)
+      ),
+    ].filter((dept) => dept !== "경영�?);
+  }, [employees]);
+
+  const visibleDepartments =
+    apiDepartments.length > 0
+      ? apiDepartments
+      : fallbackDepartments.map((name, index) => ({
+          departmentId: index + 1,
+          departmentName: name,
+        }));
+
+  useEffect(() => {
+    async function fetchDepartments() {
+      try {
+        setIsLoadingDepartments(true);
+
+        const response = await getDepartmentsApi();
+        const list = response?.data || [];
+
+        setApiDepartments(list);
+
+        if (list.length === 0) {
+          if (fallbackDepartments.length > 0) {
+            setSelectedDepartment(fallbackDepartments[0]);
+          }
+          return;
+        }
+
+        let defaultDepartment = list[0];
+
+        if (!isHrUser && !isAdmin && currentDepartment) {
+          const matchedDepartment = list.find(
+            (dept) => dept.departmentName === currentDepartment
+          );
+
+          if (matchedDepartment) {
+            defaultDepartment = matchedDepartment;
+          }
+        }
+
+        setSelectedDepartmentId(String(defaultDepartment.departmentId));
+        setSelectedDepartment(defaultDepartment.departmentName);
+      } catch (error) {
+        console.error("부??목록 조회 ?�패", error);
+
+        if (fallbackDepartments.length > 0) {
+          setSelectedDepartment(fallbackDepartments[0]);
+        }
+      } finally {
+        setIsLoadingDepartments(false);
+      }
+    }
+
+    fetchDepartments();
+  }, [currentDepartment, isHrUser, isAdmin, fallbackDepartments]);
+
+  useEffect(() => {
+    if (!selectedDepartmentId) return;
+
+    async function fetchDepartmentUsers() {
+      try {
+        setIsLoadingEmployees(true);
+
+        const response = await getDepartmentUsersApi(selectedDepartmentId);
+        setApiEmployees(response?.data || []);
+      } catch (error) {
+        console.error("부?�별 직원 조회 ?�패", error);
+        setApiEmployees([]);
+      } finally {
+        setIsLoadingEmployees(false);
+      }
+    }
+
+    fetchDepartmentUsers();
+  }, [selectedDepartmentId]);
+
+  useEffect(() => {
+    async function fetchEvaluations() {
+      try {
+        const response = await getEvaluationsApi();
+        const list = Array.isArray(response) ? response : response?.data || [];
+
+        const mappedRecords = list.map((item) => ({
+          id: item.evaluationId || item.id,
+          evaluator: item.evaluatorUserName || item.evaluatorName || "?��???,
+          employeeId: item.targetUserId,
+          employeeName:
+            item.targetUserName ||
+            item.employeeName ||
+            `?��? ${item.targetUserId}`,
+          department:
+            item.targetDepartmentName ||
+            item.departmentName ||
+            selectedDepartment ||
+            "",
+          position: item.position || "",
+          scores: {},
+          averageScore: item.score
+            ? (Number(item.score) / 20).toFixed(1)
+            : "-",
+          grade: item.score ? getGrade(Number(item.score) / 20) : "-",
+          comment: item.content || "",
+          date: item.createdAt ? item.createdAt.slice(0, 10) : "",
+        }));
+
+        setEvaluationRecords(mappedRecords);
+      } catch (error) {
+        console.error("?��? 목록 조회 ?�패", error);
+      }
+    }
+
+    fetchEvaluations();
+  }, [selectedDepartment]);
+
+  const targetEmployees =
+    apiEmployees.length > 0
+      ? apiEmployees.filter(
+          (emp) =>
+            emp.role !== "최고관리자" &&
+            emp.role !== "CEO" &&
+            emp.role !== "경영�?
+        )
+      : employees.filter(
+          (emp) =>
+            (emp.department || emp.departmentName) === selectedDepartment &&
+            emp.role !== "최고관리자"
+        );
+
+  const selectedEmployee = targetEmployees.find(
+    (emp) => String(emp.id || emp.userId) === String(selectedEmployeeId)
   );
 
   const averageScore = (
@@ -62,13 +217,13 @@ export function EvaluationPage() {
     5
   ).toFixed(1);
 
-  const getGrade = (score) => {
+  function getGrade(score) {
     if (score >= 4.5) return "A+";
     if (score >= 4.0) return "A";
     if (score >= 3.5) return "B+";
     if (score >= 3.0) return "B";
     return "C";
-  };
+  }
 
   const handleScoreChange = (name, value) => {
     setForm((prev) => ({
@@ -77,79 +232,143 @@ export function EvaluationPage() {
     }));
   };
 
-  const handleSubmit = () => {
+  const handleDepartmentChange = (departmentId) => {
+    const department = visibleDepartments.find(
+      (dept) => String(dept.departmentId) === String(departmentId)
+    );
+
+    setSelectedDepartmentId(String(departmentId));
+    setSelectedDepartment(department?.departmentName || "");
+    setSelectedEmployeeId("");
+  };
+
+  const handleSubmit = async () => {
+
     if (!selectedEmployee) {
-      alert("평가할 직원을 선택해주세요.");
+      alert("?��???직원???�택?�주?�요.");
       return;
     }
 
-    const newRecord = {
-      id: Date.now(),
-      evaluator: currentUser.name,
-      employeeId: selectedEmployee.id,
-      employeeName: selectedEmployee.name,
-      department: selectedEmployee.department,
-      position: selectedEmployee.position,
-      scores: {
-        performance: form.performance,
-        cooperation: form.cooperation,
-        expertise: form.expertise,
-        communication: form.communication,
-        goal: form.goal,
-      },
-      averageScore,
-      grade: getGrade(Number(averageScore)),
-      comment: form.comment,
-      date: new Date().toISOString().slice(0, 10),
+    if (!selectedDepartmentId) {
+      alert("?��???부?��? ?�택?�주?�요.");
+      return;
+    }
+
+    if (!currentUserId) {
+      alert("로그???�용???�보�??�인?????�습?�다. ?�시 로그?�해주세??");
+      return;
+    }
+
+    const targetUserId = selectedEmployee.userId || selectedEmployee.id;
+    const targetDepartmentId =
+      selectedEmployee.departmentId || Number(selectedDepartmentId);
+
+    const score = Math.round(Number(averageScore) * 20);
+
+    const requestBody = {
+      targetUserId: Number(targetUserId),
+      targetDepartmentId: Number(targetDepartmentId),
+      evaluatorUserId: Number(currentUserId),
+      score,
+      content: form.comment,
     };
 
-    setEvaluationRecords((prev) => [newRecord, ...prev]);
+try {
+  setIsSaving(true);
 
-    setSelectedEmployeeId("");
-    setForm({
-      performance: 4,
-      cooperation: 4,
-      expertise: 4,
-      communication: 4,
-      goal: 4,
-      comment: "",
-    });
 
-    setTimeout(() => {
-      employeeListRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
+  const response = await createEvaluationApi(requestBody);
+
+
+  const savedEvaluation = response?.data || response;
+
+      const newRecord = {
+        id: savedEvaluation?.evaluationId || Date.now(),
+        evaluator:
+          currentUser?.name ||
+          currentUser?.userName ||
+          localStorage.getItem("userName") ||
+          "?��???,
+        employeeId: targetUserId,
+        employeeName: selectedEmployee.name || selectedEmployee.userName,
+        department:
+          selectedEmployee.department ||
+          selectedEmployee.departmentName ||
+          selectedDepartment,
+        position: selectedEmployee.position || "",
+        scores: {
+          performance: form.performance,
+          cooperation: form.cooperation,
+          expertise: form.expertise,
+          communication: form.communication,
+          goal: form.goal,
+        },
+        averageScore,
+        grade: getGrade(Number(averageScore)),
+        comment: form.comment,
+        date: new Date().toISOString().slice(0, 10),
+      };
+
+      setEvaluationRecords((prev) => [newRecord, ...prev]);
+
+      setSelectedEmployeeId("");
+      setForm({
+        performance: 4,
+        cooperation: 4,
+        expertise: 4,
+        communication: 4,
+        goal: 4,
+        comment: "",
       });
-    }, 100);
-    
+
+      setTimeout(() => {
+        employeeListRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+
+      alert("?��?가 ?�?�되?�습?�다.");
+    } catch (error) {
+      console.error("?��? ?�???�패", error);
+      alert("?��? ?�?�에 ?�패?�습?�다. ?�력�??�는 ?�버 ?�태�??�인?�주?�요.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
+  const departmentRecords = evaluationRecords.filter(
+    (record) => record.department === selectedDepartment
+  );
+
   const departmentAverage =
-    evaluationRecords.filter((record) => record.department === selectedDepartment).length > 0
+    departmentRecords.length > 0
       ? (
-          evaluationRecords
-            .filter((record) => record.department === selectedDepartment)
-            .reduce((sum, record) => sum + Number(record.averageScore), 0) /
-          evaluationRecords.filter((record) => record.department === selectedDepartment).length
+          departmentRecords.reduce(
+            (sum, record) => sum + Number(record.averageScore || 0),
+            0
+          ) / departmentRecords.length
         ).toFixed(1)
       : "-";
 
   const scoreItems = [
-    { key: "performance", label: "업무 성과" },
-    { key: "cooperation", label: "협업 능력" },
-    { key: "expertise", label: "전문성" },
-    { key: "communication", label: "의사소통" },
-    { key: "goal", label: "목표 달성도" },
+    { key: "performance", label: "?�무 ?�과" },
+    { key: "cooperation", label: "?�업 ?�력" },
+    { key: "expertise", label: "?�문?? },
+    { key: "communication", label: "?�사?�통" },
+    { key: "goal", label: "목표 ?�성?? },
   ];
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-1">사내 평가</h2>
+        <h2 className="text-2xl font-semibold text-gray-900 mb-1">
+          ?�내 ?��?
+        </h2>
         <p className="text-gray-600">
           {isHrUser || isAdmin
-            ? "인사팀은 부서를 선택하여 직원 평가를 진행할 수 있습니다."
-            : `${currentUser.department} 팀원의 평가 결과를 확인하세요.`}
+            ? "?�사?� ?�는 관리자??부?��? ?�택?�여 직원 ?��?�?진행?????�습?�다."
+            : `${currentDepartment} ?�?�의 ?��? 결과�??�인?�세??`}
         </p>
       </div>
 
@@ -157,11 +376,11 @@ export function EvaluationPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="text-sm text-gray-600">선택 부서</div>
+              <div className="text-sm text-gray-600">?�택 부??/div>
               <Building2 className="size-8 text-blue-500" />
             </div>
             <div className="text-2xl font-bold text-gray-900">
-              {selectedDepartment}
+              {isLoadingDepartments ? "조회 �?.." : selectedDepartment || "-"}
             </div>
           </CardContent>
         </Card>
@@ -169,20 +388,20 @@ export function EvaluationPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="text-sm text-gray-600">평가 대상 인원</div>
+              <div className="text-sm text-gray-600">?��? ?�???�원</div>
               <Users className="size-8 text-purple-500" />
             </div>
             <div className="text-4xl font-bold text-gray-900">
-              {targetEmployees.length}
+              {isLoadingEmployees ? "-" : targetEmployees.length}
             </div>
-            <div className="text-sm text-gray-600">명</div>
+            <div className="text-sm text-gray-600">�?/div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="text-sm text-gray-600">부서 평균</div>
+              <div className="text-sm text-gray-600">부???�균</div>
               <Award className="size-8 text-yellow-500" />
             </div>
             <div className="text-4xl font-bold text-gray-900">
@@ -195,10 +414,10 @@ export function EvaluationPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="text-sm text-gray-600">평가 기간</div>
+              <div className="text-sm text-gray-600">?��? 기간</div>
               <TrendingUp className="size-8 text-green-500" />
             </div>
-            <div className="text-xl font-bold text-gray-900">2026년 1분기</div>
+            <div className="text-xl font-bold text-gray-900">2026??1분기</div>
           </CardContent>
         </Card>
       </div>
@@ -206,24 +425,19 @@ export function EvaluationPage() {
       {(isHrUser || isAdmin) && (
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>평가 부서 선택</CardTitle>
+            <CardTitle>?��? 부???�택</CardTitle>
           </CardHeader>
           <CardContent>
             <select
-              value={selectedDepartment}
-              onChange={(e) => {
-                setSelectedDepartment(e.target.value);
-                setSelectedEmployeeId("");
-              }}
+              value={selectedDepartmentId}
+              onChange={(e) => handleDepartmentChange(e.target.value)}
               className="w-full md:w-35 h-10 rounded-md border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {departments
-                .filter((dept) => dept !== "인사팀")
-                .map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
+              {visibleDepartments.map((dept) => (
+                <option key={dept.departmentId} value={dept.departmentId}>
+                  {dept.departmentName}
+                </option>
+              ))}
             </select>
           </CardContent>
         </Card>
@@ -232,13 +446,13 @@ export function EvaluationPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>직원 평가 입력</CardTitle>
+            <CardTitle>직원 ?��? ?�력</CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-5">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">
-                평가 대상 직원
+                ?��? ?�??직원
               </label>
 
               <div className="relative w-[220px]">
@@ -247,10 +461,13 @@ export function EvaluationPage() {
                   onChange={(e) => setSelectedEmployeeId(e.target.value)}
                   className="w-full h-12 appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-12 text-sm focus:outline-none focus:ring-0 focus:border-gray-300"
                 >
-                  <option value="">직원을 선택하세요</option>
+                  <option value="">직원???�택?�세??/option>
                   {targetEmployees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name} / {emp.position}
+                    <option
+                      key={emp.id || emp.userId}
+                      value={emp.id || emp.userId}
+                    >
+                      {emp.name || emp.userName} / {emp.position || "직책 ?�음"}
                     </option>
                   ))}
                 </select>
@@ -266,7 +483,7 @@ export function EvaluationPage() {
                     {item.label}
                   </label>
                   <span className="text-sm font-semibold text-gray-900">
-                    {form[item.key]}점
+                    {form[item.key]}??
                   </span>
                 </div>
 
@@ -291,7 +508,7 @@ export function EvaluationPage() {
 
             <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-blue-700">평균 점수</span>
+                <span className="text-sm text-blue-700">?�균 ?�수</span>
                 <div className="flex items-center gap-2">
                   <span className="text-2xl font-bold text-blue-700">
                     {averageScore}
@@ -305,92 +522,100 @@ export function EvaluationPage() {
 
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">
-                평가 의견
+                ?��? ?�견
               </label>
               <Textarea
                 value={form.comment}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, comment: e.target.value }))
                 }
-                placeholder="평가 의견을 입력하세요."
+                placeholder="?��? ?�견???�력?�세??
                 className="min-h-28"
               />
             </div>
 
-            <Button onClick={handleSubmit} className="w-full">
+            <Button onClick={handleSubmit} className="w-full" disabled={isSaving}>
               <ClipboardEdit className="size-4 mr-2" />
-              평가 저장
+              {isSaving ? "?�??�?.." : "?��? ?�??}
             </Button>
           </CardContent>
         </Card>
-      <div ref={employeeListRef}>
-        <Card>
-          <CardHeader>
-            <CardTitle>{selectedDepartment} 직원 목록</CardTitle>
-          </CardHeader>
 
-          <CardContent>
-            <div className="space-y-3">
-              {targetEmployees.map((emp) => {
-                const latestRecord = evaluationRecords.find(
-                  (record) => record.employeeId === emp.id
-                );
+        <div ref={employeeListRef}>
+          <Card>
+            <CardHeader>
+              <CardTitle>{selectedDepartment || "-"} 직원 목록</CardTitle>
+            </CardHeader>
 
-                return (
-                  <div
-                    key={emp.id}
-                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="size-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold">
-                        {emp.name.charAt(0)}
-                      </div>
+            <CardContent>
+              <div className="space-y-3">
+                {targetEmployees.length === 0 ? (
+                  <div className="text-center py-10 text-gray-500">
+                    조회??직원???�습?�다.
+                  </div>
+                ) : (
+                  targetEmployees.map((emp) => {
+                    const employeeId = emp.id || emp.userId;
+                    const employeeName = emp.name || emp.userName;
+                    const latestRecord = evaluationRecords.find(
+                      (record) => String(record.employeeId) === String(employeeId)
+                    );
 
-                      <div>
-                        <h4 className="font-semibold text-gray-900">
-                          {emp.name}
-                        </h4>
-                        <p className="text-xs text-gray-600">
-                          {emp.position}
-                        </p>
-                      </div>
-                    </div>
-
-                    {latestRecord ? (
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-gray-900">
-                            {latestRecord.averageScore}
+                    return (
+                      <div
+                        key={employeeId}
+                        className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold">
+                            {employeeName?.charAt(0) || "?"}
                           </div>
-                          <div className="text-xs text-gray-600">/ 5.0</div>
+
+                          <div>
+                            <h4 className="font-semibold text-gray-900">
+                              {employeeName}
+                            </h4>
+                            <p className="text-xs text-gray-600">
+                              {emp.position || "직책 ?�음"}
+                            </p>
+                          </div>
                         </div>
 
-                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-                          {latestRecord.grade}
-                        </Badge>
+                        {latestRecord ? (
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-gray-900">
+                                {latestRecord.averageScore}
+                              </div>
+                              <div className="text-xs text-gray-600">/ 5.0</div>
+                            </div>
+
+                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                              {latestRecord.grade}
+                            </Badge>
+                          </div>
+                        ) : (
+                          <Badge variant="outline">미평가</Badge>
+                        )}
                       </div>
-                    ) : (
-                      <Badge variant="outline">미평가</Badge>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                    );
+                  })
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
-    
 
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>평가 기록</CardTitle>
+          <CardTitle>?��? 기록</CardTitle>
         </CardHeader>
 
         <CardContent>
           {evaluationRecords.length === 0 ? (
             <div className="text-center py-10 text-gray-500">
-              아직 저장된 평가 기록이 없습니다.
+              ?�직 ?�?�된 ?��? 기록???�습?�다.
             </div>
           ) : (
             <div className="space-y-3">
@@ -412,8 +637,8 @@ export function EvaluationPage() {
                       </div>
 
                       <p className="text-sm text-gray-600">
-                        {record.position} · 평가자 {record.evaluator} ·{" "}
-                        {record.date}
+                        {record.position || "직책 ?�음"} · ?��???" "}
+                        {record.evaluator} · {record.date}
                       </p>
                     </div>
 
@@ -426,7 +651,7 @@ export function EvaluationPage() {
                   </div>
 
                   <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">
-                    {record.comment || "평가 의견 없음"}
+                    {record.comment || "?��? ?�견 ?�음"}
                   </p>
                 </div>
               ))}
