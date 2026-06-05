@@ -39,6 +39,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/UI/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/UI/dialog";
 import { ChatWidget } from "@/components/Chat/ChatWidget";
 import { ChatBotWidget } from "@/components/Chat/ChatBotWidget";
 
@@ -96,6 +102,7 @@ export function MainLayout() {
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHeaderOrderModal, setShowHeaderOrderModal] = useState(false);
   const [readAlarmIds, setReadAlarmIds] = useState([]);
   const [localLogin, setLocalLogin] = useState(
     localStorage.getItem("isLogin") === "true"
@@ -126,6 +133,9 @@ export function MainLayout() {
     vacationRequests.filter((request) =>
       ["대기중", "대기", "pending", "PENDING"].includes(request.status)
     ).length || 0;
+
+  const showVacationMenuAlarm =
+    settings.notificationEnabled && canApproveVacation && pendingVacationCount > 0;
 
   const getNoticeAlarmId = (notice) => `notice-${notice.id}`;
   const getVacationAlarmId = (request) => `vacation-${request.id}`;
@@ -349,7 +359,7 @@ export function MainLayout() {
       return location.pathname === "/dashboard";
     }
 
-    return location.pathname.startsWith(path);
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
   const updateSettings = (updates) => {
@@ -443,7 +453,8 @@ export function MainLayout() {
   const showNavText =
     settings.headerDisplayMode === "iconText" ||
     settings.headerDisplayMode === "textOnly";
-      return (
+
+  return (
     <div
       className={cn(
         "flex flex-col min-h-screen",
@@ -509,8 +520,7 @@ export function MainLayout() {
 
                       {isLoggedIn &&
                         item.path === "/vacation" &&
-                        canApproveVacation &&
-                        pendingVacationCount > 0 && (
+                        showVacationMenuAlarm && (
                           <span className="absolute -top-1.5 -right-2 w-[8px] h-[8px] rounded-full bg-red-500" />
                         )}
                     </span>
@@ -519,8 +529,7 @@ export function MainLayout() {
                   {!showNavText &&
                     isLoggedIn &&
                     item.path === "/vacation" &&
-                    canApproveVacation &&
-                    pendingVacationCount > 0 && (
+                    showVacationMenuAlarm && (
                       <span className="absolute top-1 right-0 w-[8px] h-[8px] rounded-full bg-red-500" />
                     )}
                 </Link>
@@ -661,12 +670,18 @@ export function MainLayout() {
 
                             <button
                               type="button"
-                              onClick={() =>
+                              onClick={() => {
+                                const nextNotificationEnabled =
+                                  !settings.notificationEnabled;
+
                                 updateSettings({
-                                  notificationEnabled:
-                                    !settings.notificationEnabled,
-                                })
-                              }
+                                  notificationEnabled: nextNotificationEnabled,
+                                });
+
+                                if (!nextNotificationEnabled) {
+                                  setShowNotifications(false);
+                                }
+                              }}
                               className={cn(
                                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
                                 settings.notificationEnabled
@@ -756,19 +771,27 @@ export function MainLayout() {
                           </div>
                         </div>
 
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
+                        <div
+                          className={cn(
+                            "rounded-lg border p-4",
+                            isDark
+                              ? "border-[#5c5c73] bg-[#2f2f36]"
+                              : "border-gray-200 bg-gray-50"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-4">
                             <div>
                               <div className="text-sm font-medium">
                                 헤더 메뉴 순서
                               </div>
                               <div
                                 className={cn(
-                                  "text-xs",
+                                  "text-xs mt-1",
                                   isDark ? DARK.muted : "text-gray-500"
                                 )}
                               >
-                                위/아래 버튼으로 순서를 바꿀 수 있습니다.
+                                헤더에 표시되는 메뉴 순서와 표시 여부를
+                                설정합니다.
                               </div>
                             </div>
 
@@ -776,126 +799,19 @@ export function MainLayout() {
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={resetHeaderSettings}
+                              onClick={() => {
+                                setShowHeaderOrderModal(true);
+                                setShowSettings(false);
+                              }}
                               className={
                                 isDark
-                                  ? "bg-[#2f2f36] border-[#5c5c73] text-white hover:bg-[#48484f]"
+                                  ? "bg-[#35353d] border-[#5c5c73] text-white hover:bg-[#48484f]"
                                   : ""
                               }
                             >
-                              초기화
+                              헤더 순서 변경
                             </Button>
                           </div>
-
-                          <div className="space-y-2">
-                            {visibleConfigNavItems.map((item, index) => (
-                              <div
-                                key={item.path}
-                                className={cn(
-                                  "flex items-center justify-between gap-2 rounded-lg border px-3 py-2",
-                                  isDark
-                                    ? "border-[#5c5c73] bg-[#2f2f36]"
-                                    : "border-gray-200 bg-gray-50"
-                                )}
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <item.icon className="size-4 shrink-0" />
-                                  <span className="truncate text-sm">
-                                    {item.label}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <button
-                                    type="button"
-                                    disabled={index === 0}
-                                    onClick={() =>
-                                      moveHeaderItem(item.path, "up")
-                                    }
-                                    className={cn(
-                                      "rounded-md p-1.5 transition-colors disabled:opacity-30",
-                                      isDark
-                                        ? "hover:bg-[#48484f]"
-                                        : "hover:bg-gray-200"
-                                    )}
-                                  >
-                                    <ArrowUp className="size-4" />
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    disabled={
-                                      index === visibleConfigNavItems.length - 1
-                                    }
-                                    onClick={() =>
-                                      moveHeaderItem(item.path, "down")
-                                    }
-                                    className={cn(
-                                      "rounded-md p-1.5 transition-colors disabled:opacity-30",
-                                      isDark
-                                        ? "hover:bg-[#48484f]"
-                                        : "hover:bg-gray-200"
-                                    )}
-                                  >
-                                    <ArrowDown className="size-4" />
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => hideHeaderItem(item.path)}
-                                    className={cn(
-                                      "rounded-md p-1.5 transition-colors",
-                                      isDark
-                                        ? "hover:bg-[#48484f]"
-                                        : "hover:bg-gray-200"
-                                    )}
-                                  >
-                                    <EyeOff className="size-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {hiddenNavItems.length > 0 && (
-                            <div className="space-y-2 pt-2">
-                              <div className="text-sm font-medium">
-                                숨긴 메뉴
-                              </div>
-
-                              {hiddenNavItems.map((item) => (
-                                <div
-                                  key={item.path}
-                                  className={cn(
-                                    "flex items-center justify-between gap-2 rounded-lg border px-3 py-2",
-                                    isDark
-                                      ? "border-[#5c5c73] bg-[#2f2f36]"
-                                      : "border-gray-200 bg-gray-50"
-                                  )}
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <item.icon className="size-4 shrink-0" />
-                                    <span className="truncate text-sm">
-                                      {item.label}
-                                    </span>
-                                  </div>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => showHeaderItem(item.path)}
-                                    className={cn(
-                                      "rounded-md p-1.5 transition-colors",
-                                      isDark
-                                        ? "hover:bg-[#48484f]"
-                                        : "hover:bg-gray-200"
-                                    )}
-                                  >
-                                    <Eye className="size-4" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       </div>
 
@@ -1334,8 +1250,148 @@ export function MainLayout() {
         <Outlet />
       </main>
 
+      <Dialog
+        open={showHeaderOrderModal}
+        onOpenChange={setShowHeaderOrderModal}
+      >
+        <DialogContent
+          className={cn(
+            "max-w-xl",
+            isDark ? "bg-[#35353d] border-[#5c5c73] text-white" : ""
+          )}
+        >
+          <DialogHeader>
+            <DialogTitle>헤더 메뉴 순서 변경</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <p
+                className={cn(
+                  "text-sm",
+                  isDark ? "text-zinc-400" : "text-gray-500"
+                )}
+              >
+                위/아래 버튼으로 헤더 메뉴 순서를 변경하고, 필요 없는 메뉴는
+                숨길 수 있습니다.
+              </p>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={resetHeaderSettings}
+                className={
+                  isDark
+                    ? "bg-[#2f2f36] border-[#5c5c73] text-white hover:bg-[#48484f]"
+                    : ""
+                }
+              >
+                초기화
+              </Button>
+            </div>
+
+            <div className="max-h-[480px] overflow-y-auto pr-1 space-y-3">
+              <div className="space-y-2">
+                <div className="text-sm font-medium">표시 중인 메뉴</div>
+
+                {visibleConfigNavItems.map((item, index) => (
+                  <div
+                    key={item.path}
+                    className={cn(
+                      "flex items-center justify-between gap-2 rounded-lg border px-3 py-2",
+                      isDark
+                        ? "border-[#5c5c73] bg-[#2f2f36]"
+                        : "border-gray-200 bg-gray-50"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <item.icon className="size-4 shrink-0" />
+                      <span className="truncate text-sm">{item.label}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        disabled={index === 0}
+                        onClick={() => moveHeaderItem(item.path, "up")}
+                        className={cn(
+                          "rounded-md p-1.5 transition-colors disabled:opacity-30",
+                          isDark ? "hover:bg-[#48484f]" : "hover:bg-gray-200"
+                        )}
+                      >
+                        <ArrowUp className="size-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={index === visibleConfigNavItems.length - 1}
+                        onClick={() => moveHeaderItem(item.path, "down")}
+                        className={cn(
+                          "rounded-md p-1.5 transition-colors disabled:opacity-30",
+                          isDark ? "hover:bg-[#48484f]" : "hover:bg-gray-200"
+                        )}
+                      >
+                        <ArrowDown className="size-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => hideHeaderItem(item.path)}
+                        className={cn(
+                          "rounded-md p-1.5 transition-colors",
+                          isDark ? "hover:bg-[#48484f]" : "hover:bg-gray-200"
+                        )}
+                      >
+                        <EyeOff className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {hiddenNavItems.length > 0 && (
+                <div className="space-y-2 pt-2">
+                  <div className="text-sm font-medium">숨긴 메뉴</div>
+
+                  {hiddenNavItems.map((item) => (
+                    <div
+                      key={item.path}
+                      className={cn(
+                        "flex items-center justify-between gap-2 rounded-lg border px-3 py-2",
+                        isDark
+                          ? "border-[#5c5c73] bg-[#2f2f36]"
+                          : "border-gray-200 bg-gray-50"
+                      )}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <item.icon className="size-4 shrink-0" />
+                        <span className="truncate text-sm">{item.label}</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => showHeaderItem(item.path)}
+                        className={cn(
+                          "rounded-md p-1.5 transition-colors",
+                          isDark ? "hover:bg-[#48484f]" : "hover:bg-gray-200"
+                        )}
+                      >
+                        <Eye className="size-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <ChatWidget />
       <ChatBotWidget />
     </div>
   );
 }
+
+export default MainLayout;

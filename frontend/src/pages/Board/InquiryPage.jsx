@@ -32,8 +32,11 @@ export function InquiryPage() {
   const { currentUser, customSettings } = useAppContext();
 
   const isDark = customSettings?.darkMode;
-  const isHrAdmin =
-    currentUser?.department === "인사팀" && currentUser?.role === "팀장";
+
+  const canManageInquiry =
+    currentUser?.department === "인사팀" ||
+    currentUser?.role === "팀장" ||
+    currentUser?.role === "최고관리자";
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("전체");
@@ -111,38 +114,43 @@ export function InquiryPage() {
     : "";
 
   const filteredInquiries = inquiries.filter((inquiry) => {
+    const keyword = searchTerm.toLowerCase();
+
     const matchesSearch =
-      inquiry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inquiry.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (inquiry.answer || "").toLowerCase().includes(searchTerm.toLowerCase());
+      inquiry.title.toLowerCase().includes(keyword) ||
+      inquiry.content.toLowerCase().includes(keyword) ||
+      (inquiry.answer || "").toLowerCase().includes(keyword);
 
     const matchesCategory =
       selectedCategory === "전체" || inquiry.category === selectedCategory;
 
-    const matchesRole = isHrAdmin ? true : inquiry.author === currentUser?.name;
+    const matchesRole = canManageInquiry
+      ? true
+      : inquiry.author === currentUser?.name;
 
     return matchesSearch && matchesCategory && matchesRole;
   });
 
   const getCategoryColor = (category) =>
     ({
-      일반: "bg-blue-100 text-blue-700",
-      시스템: "bg-red-100 text-red-700",
-      인사: "bg-green-100 text-green-700",
-      기타: "bg-gray-100 text-gray-700",
-    }[category] || "bg-gray-100 text-gray-700");
+      일반: "bg-blue-100 text-blue-700 hover:bg-blue-100",
+      시스템: "bg-red-100 text-red-700 hover:bg-red-100",
+      인사: "bg-green-100 text-green-700 hover:bg-green-100",
+      기타: "bg-gray-100 text-gray-700 hover:bg-gray-100",
+    }[category] || "bg-gray-100 text-gray-700 hover:bg-gray-100");
 
   const getStatusColor = (status) =>
     ({
-      대기중: "bg-yellow-100 text-yellow-700",
-      완료: "bg-green-100 text-green-700",
-    }[status] || "bg-gray-100 text-gray-700");
+      대기중: "bg-yellow-100 text-yellow-700 hover:bg-yellow-100",
+      완료: "bg-green-100 text-green-700 hover:bg-green-100",
+    }[status] || "bg-gray-100 text-gray-700 hover:bg-gray-100");
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
     if (!formTitle.trim() || !formContent.trim()) {
-      return alert("제목과 내용을 모두 입력해주세요.");
+      alert("제목과 내용을 모두 입력해주세요.");
+      return;
     }
 
     setInquiries((prev) => [
@@ -166,7 +174,8 @@ export function InquiryPage() {
 
   const handleAnswer = () => {
     if (!selectedInquiry || !answerText.trim()) {
-      return alert("답변 내용을 입력해주세요.");
+      alert("답변 내용을 입력해주세요.");
+      return;
     }
 
     setInquiries((prev) =>
@@ -191,24 +200,29 @@ export function InquiryPage() {
     <div className={cn("p-6 max-w-6xl mx-auto min-h-full", pageClass)}>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h2 className={cn("text-2xl font-semibold mb-1 flex items-center gap-2", textMain)}>
+          <h2
+            className={cn(
+              "text-2xl font-semibold mb-1 flex items-center gap-2",
+              textMain
+            )}
+          >
             <HelpCircle
               className={cn(
                 "size-7",
                 isDark ? "text-[#d8d8e3]" : "text-blue-600"
               )}
             />
-            {isHrAdmin ? "문의 관리" : "문의"}
+            {canManageInquiry ? "문의 관리" : "문의"}
           </h2>
 
           <p className={textSub}>
-            {isHrAdmin
+            {canManageInquiry
               ? "직원 문의를 확인하고 답변을 작성하세요"
               : "궁금한 사항을 문의하세요"}
           </p>
         </div>
 
-        {!isHrAdmin && (
+        {!canManageInquiry && (
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
               <Button className={primaryButtonClass}>
@@ -273,7 +287,10 @@ export function InquiryPage() {
                 </div>
 
                 <div className="flex gap-3">
-                  <Button type="submit" className={cn("flex-1", primaryButtonClass)}>
+                  <Button
+                    type="submit"
+                    className={cn("flex-1", primaryButtonClass)}
+                  >
                     등록하기
                   </Button>
 
@@ -303,7 +320,7 @@ export function InquiryPage() {
 
           <Input
             type="text"
-            placeholder={isHrAdmin ? "직원 문의 검색..." : "문의 검색..."}
+            placeholder={canManageInquiry ? "직원 문의 검색..." : "문의 검색..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className={cn("pl-10", inputClass)}
@@ -404,7 +421,12 @@ export function InquiryPage() {
                   </span>
                 </div>
 
-                <div className={cn("rounded-lg border p-4 text-sm leading-6", innerClass)}>
+                <div
+                  className={cn(
+                    "rounded-lg border p-4 text-sm leading-6",
+                    innerClass
+                  )}
+                >
                   {selectedInquiry.content}
                 </div>
 
@@ -429,7 +451,7 @@ export function InquiryPage() {
                   )}
                 </div>
 
-                {isHrAdmin && (
+                {canManageInquiry && (
                   <div className="space-y-2">
                     <Label htmlFor="answer">답변 작성</Label>
 
@@ -442,7 +464,10 @@ export function InquiryPage() {
                       className={inputClass}
                     />
 
-                    <Button className={primaryButtonClass} onClick={handleAnswer}>
+                    <Button
+                      className={primaryButtonClass}
+                      onClick={handleAnswer}
+                    >
                       <MessageSquareReply className="size-4 mr-2" />
                       답변 등록
                     </Button>
@@ -456,3 +481,5 @@ export function InquiryPage() {
     </div>
   );
 }
+
+export default InquiryPage;
