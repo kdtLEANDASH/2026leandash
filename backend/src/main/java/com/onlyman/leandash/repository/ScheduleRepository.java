@@ -23,4 +23,6 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
             String titleKeyword,
             String contentKeyword
     );
+    
+    List<Schedule> findByScheduleTypeInOrderByStartDatetimeAsc(List<String> scheduleTypes);
 }

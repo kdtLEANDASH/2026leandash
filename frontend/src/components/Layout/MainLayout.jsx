@@ -229,8 +229,10 @@ export function MainLayout() {
       public: true,
     },
 	{
-	  path: canApproveVacation ? "/vacation/list" : "/vacation/request",
-	  label: canApproveVacation ? "휴가 관리" : "휴가 신청",
+	  path: "/vacation",
+	  label: canApproveVacation
+	    ? "휴가 관리"
+	    : "휴가 신청",
 	  icon: Plane,
 	  roles: ["최고관리자", "팀장", "일반직원", "ADMIN"],
 	  public: true,

@@ -49,6 +49,13 @@ export function CalendarPage() {
 
   const currentUserId = currentUser?.userId || currentUser?.id;
 
+  const isSuperAdmin =
+    currentUser?.role === "최고관리자" || currentUser?.role === "ADMIN";
+
+  const isHrAdmin = currentUser?.department === "인사팀";
+
+  const canCreateOfficialSchedule = isSuperAdmin || isHrAdmin;
+
   const formatDate = (value) => {
     if (!value) return "";
     if (typeof value === "string") {
@@ -155,7 +162,6 @@ export function CalendarPage() {
       );
 
       const normalized = Array.isArray(data) ? data.map(normalizeEvent) : [];
-
       setEvents(normalized);
     } catch (error) {
       console.error("일정 조회 실패:", error);
@@ -191,16 +197,21 @@ export function CalendarPage() {
       const isApproved =
         vacation.status === "APPROVED" || vacation.status === "승인";
 
-      return (
-        isApproved &&
-        String(vacation.employeeId) === String(currentUserId)
-      );
+      return isApproved && String(vacation.employeeId) === String(currentUserId);
     });
   }, [vacations, currentUserId]);
 
   const handleAddEvent = async () => {
     if (!formData.title || !formData.date) {
       alert("제목과 날짜를 입력해주세요.");
+      return;
+    }
+
+    if (
+      !canCreateOfficialSchedule &&
+      (formData.type === "COMPANY" || formData.type === "HOLIDAY")
+    ) {
+      alert("전사 일정과 공휴일은 관리자 또는 인사팀만 추가할 수 있습니다.");
       return;
     }
 
@@ -217,8 +228,8 @@ export function CalendarPage() {
         scheduleType: formData.type,
         isAllDay: !formData.startTime && !formData.endTime,
         departmentId: null,
-        isOfficial: formData.type === "COMPANY",
-        isHoliday: formData.type === "HOLIDAY",
+        isOfficial: canCreateOfficialSchedule && formData.type === "COMPANY",
+        isHoliday: canCreateOfficialSchedule && formData.type === "HOLIDAY",
         color: null,
         remindAt: null,
       };
@@ -424,15 +435,27 @@ export function CalendarPage() {
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
+
                     <SelectContent>
                       <SelectItem value="PERSONAL">개인</SelectItem>
                       <SelectItem value="TEAM">팀</SelectItem>
-                      <SelectItem value="COMPANY">전사</SelectItem>
-                      <SelectItem value="HOLIDAY">공휴일</SelectItem>
+
+                      {canCreateOfficialSchedule && (
+                        <>
+                          <SelectItem value="COMPANY">전사</SelectItem>
+                          <SelectItem value="HOLIDAY">공휴일</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
+              {!canCreateOfficialSchedule && (
+                <div className="text-xs text-gray-500">
+                  일반 직원은 개인/팀 일정만 추가할 수 있습니다.
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
