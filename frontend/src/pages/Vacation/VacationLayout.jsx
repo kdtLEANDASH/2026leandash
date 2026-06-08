@@ -13,7 +13,10 @@ export default function VacationLayout() {
     currentUser,
     employees,
     getVacationBalance,
+    customSettings,
   } = useAppContext();
+
+  const isDark = customSettings?.darkMode;
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,7 +28,8 @@ export default function VacationLayout() {
   const isTeamLeader = currentUser?.role === "팀장";
 
   const canApproveVacation = !!currentUser && isSuperAdmin;
-  const canViewVacationStatus = !!currentUser && (isTeamLeader || canApproveVacation);
+  const canViewVacationStatus =
+    !!currentUser && (isTeamLeader || canApproveVacation);
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarEvents, setCalendarEvents] = useState([]);
@@ -50,8 +54,10 @@ export default function VacationLayout() {
   const [showCurrentOnly, setShowCurrentOnly] = useState(false);
   const [statusSortOption, setStatusSortOption] = useState("startAsc");
 
-  const [recommendationTypeFilter, setRecommendationTypeFilter] = useState("전체");
-  const [recommendationDaysFilter, setRecommendationDaysFilter] = useState("전체");
+  const [recommendationTypeFilter, setRecommendationTypeFilter] =
+    useState("전체");
+  const [recommendationDaysFilter, setRecommendationDaysFilter] =
+    useState("전체");
   const [recommendationPeriod, setRecommendationPeriod] = useState("90");
   const [previewRecommendation, setPreviewRecommendation] = useState(null);
   const [previewDate, setPreviewDate] = useState(new Date());
@@ -163,9 +169,7 @@ export default function VacationLayout() {
 
       const employee = findEmployeeByUserId(userId);
 
-      const vacationId =
-        vacation.vacationId ||
-        vacation.id;
+      const vacationId = vacation.vacationId || vacation.id;
 
       const startDate = vacation.startDate || "";
       const endDate = vacation.endDate || "";
@@ -203,7 +207,8 @@ export default function VacationLayout() {
         raw: vacation,
       };
     },
-     [findEmployeeByUserId]);
+    [findEmployeeByUserId]
+  );
 
   const loadVacations = useCallback(async () => {
     if (!currentUser) return;
@@ -213,7 +218,9 @@ export default function VacationLayout() {
 
       const data = await vacationApi.getAll();
 
-      setApiVacationRequests(Array.isArray(data) ? data.map(normalizeVacation) : []);
+      setApiVacationRequests(
+        Array.isArray(data) ? data.map(normalizeVacation) : []
+      );
     } catch (error) {
       console.error("휴가 목록 조회 실패:", error);
       setApiVacationRequests([]);
@@ -224,15 +231,18 @@ export default function VacationLayout() {
 
   const formatScheduleDate = (value) => {
     if (!value) return "";
+
     if (typeof value === "string") {
       return value.includes("T") ? value.split("T")[0] : value.slice(0, 10);
     }
+
     return "";
   };
 
   const formatScheduleTime = (value) => {
     if (!value || typeof value !== "string") return "";
     if (!value.includes("T")) return "";
+
     return value.split("T")[1]?.slice(0, 5) || "";
   };
 
@@ -256,7 +266,9 @@ export default function VacationLayout() {
       endDate: formatScheduleDate(end),
       startTime: formatScheduleTime(start),
       endTime: formatScheduleTime(end),
-      type: schedule.isHoliday ? "공휴일" : typeMap[schedule.scheduleType] || "개인",
+      type: schedule.isHoliday
+        ? "공휴일"
+        : typeMap[schedule.scheduleType] || "개인",
       raw: schedule,
     };
   };
@@ -286,7 +298,10 @@ export default function VacationLayout() {
     const loadSchedules = async () => {
       try {
         const data = await scheduleApi.getMonthlySchedules();
-        setCalendarEvents(Array.isArray(data) ? data.map(normalizeSchedule) : []);
+
+        setCalendarEvents(
+          Array.isArray(data) ? data.map(normalizeSchedule) : []
+        );
       } catch (error) {
         console.error("휴가 페이지 일정 조회 실패:", error);
       }
@@ -305,33 +320,33 @@ export default function VacationLayout() {
   const sourceVacationRequests =
     apiVacationRequests.length > 0 ? apiVacationRequests : vacationRequests;
 
-	const visibleVacationRequests = useMemo(() => {
-	  return sourceVacationRequests.filter((vacation) => {
-	    if (canApproveVacation) return true;
+  const visibleVacationRequests = useMemo(() => {
+    return sourceVacationRequests.filter((vacation) => {
+      if (canApproveVacation) return true;
 
-	    if (isHrAdmin) return true;
+      if (isHrAdmin) return true;
 
-	    if (isTeamLeader) {
-	      const employee = findEmployeeByUserId(vacation.employeeId);
+      if (isTeamLeader) {
+        const employee = findEmployeeByUserId(vacation.employeeId);
 
-	      return (
-	        !!employee &&
-	        (employee.department === currentUser?.department ||
-	          String(vacation.employeeId) === String(getCurrentUserId()))
-	      );
-	    }
+        return (
+          !!employee &&
+          (employee.department === currentUser?.department ||
+            String(vacation.employeeId) === String(getCurrentUserId()))
+        );
+      }
 
-	    return String(vacation.employeeId) === String(getCurrentUserId());
-	  });
-	}, [
-	  sourceVacationRequests,
-	  currentUser,
-	  canApproveVacation,
-	  isHrAdmin,
-	  isTeamLeader,
-	  findEmployeeByUserId,
-	  getCurrentUserId,
-	]);
+      return String(vacation.employeeId) === String(getCurrentUserId());
+    });
+  }, [
+    sourceVacationRequests,
+    currentUser,
+    canApproveVacation,
+    isHrAdmin,
+    isTeamLeader,
+    findEmployeeByUserId,
+    getCurrentUserId,
+  ]);
 
   const filteredVacationRequests = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase();
@@ -375,7 +390,8 @@ export default function VacationLayout() {
 
   const vacationStatusList = useMemo(() => {
     return [...visibleApprovedVacations].sort(
-      (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+      (a, b) =>
+        new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
     );
   }, [visibleApprovedVacations]);
 
@@ -759,10 +775,18 @@ export default function VacationLayout() {
 
   const getStatusBadge = (status) => {
     const map = {
-      승인: "bg-green-100 text-green-700 hover:bg-green-100",
-      대기: "bg-yellow-100 text-yellow-700 hover:bg-yellow-100",
-      반려: "bg-red-100 text-red-700 hover:bg-red-100",
-      취소: "bg-gray-100 text-gray-700 hover:bg-gray-100",
+      승인: isDark
+        ? "bg-green-500/20 text-green-300 border border-green-400/30 hover:bg-green-500/20"
+        : "bg-green-100 text-green-700 hover:bg-green-100",
+      대기: isDark
+        ? "bg-yellow-500/20 text-yellow-300 border border-yellow-400/30 hover:bg-yellow-500/20"
+        : "bg-yellow-100 text-yellow-700 hover:bg-yellow-100",
+      반려: isDark
+        ? "bg-red-500/20 text-red-300 border border-red-400/30 hover:bg-red-500/20"
+        : "bg-red-100 text-red-700 hover:bg-red-100",
+      취소: isDark
+        ? "bg-zinc-600 text-zinc-200 border border-zinc-500 hover:bg-zinc-600"
+        : "bg-gray-100 text-gray-700 hover:bg-gray-100",
     };
 
     return <Badge className={map[status] || map["대기"]}>{status}</Badge>;
@@ -793,6 +817,8 @@ export default function VacationLayout() {
   };
 
   const contextValue = {
+    isDark,
+
     vacationRequests: sourceVacationRequests,
     currentUser,
     employees,
@@ -863,19 +889,49 @@ export default function VacationLayout() {
   const linkClass = ({ isActive }) =>
     cn(
       "w-full block text-left px-4 py-3 rounded-lg transition-colors text-sm font-medium",
-      isActive ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-50"
+      isActive
+        ? isDark
+          ? "bg-[#5c5c73] text-white"
+          : "bg-blue-50 text-blue-700"
+        : isDark
+        ? "text-zinc-300 hover:bg-[#48484f] hover:text-white"
+        : "text-gray-700 hover:bg-gray-50"
     );
 
   return (
-    <div className="flex h-full">
-      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
+    <div className={cn("flex h-full", isDark ? "bg-[#27272a] text-white" : "")}>
+      <div
+        className={cn(
+          "w-64 border-r flex flex-col",
+          isDark
+            ? "bg-[#35353d] border-[#5c5c73]"
+            : "bg-white border-gray-200"
+        )}
+      >
+        <div
+          className={cn(
+            "p-4 border-b",
+            isDark ? "border-[#5c5c73]" : "border-gray-200"
+          )}
+        >
+          <h2
+            className={cn(
+              "text-lg font-semibold",
+              isDark ? "text-white" : "text-gray-900"
+            )}
+          >
             {canViewVacationStatus ? "휴가 관리 / 현황" : "휴가 관리"}
           </h2>
 
-          <p className="text-xs text-gray-500 mt-1">
-            {canApproveVacation ? "부서별 휴가 승인 및 반려" : "Vacation Management"}
+          <p
+            className={cn(
+              "text-xs mt-1",
+              isDark ? "text-zinc-400" : "text-gray-500"
+            )}
+          >
+            {canApproveVacation
+              ? "부서별 휴가 승인 및 반려"
+              : "Vacation Management"}
           </p>
         </div>
 
@@ -904,9 +960,19 @@ export default function VacationLayout() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-gray-50 p-6">
+      <div
+        className={cn(
+          "flex-1 overflow-auto p-6",
+          isDark ? "bg-[#27272a]" : "bg-gray-50"
+        )}
+      >
         <div className="mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2
+            className={cn(
+              "text-xl font-semibold",
+              isDark ? "text-white" : "text-gray-900"
+            )}
+          >
             {pageTitleMap[location.pathname] || "[ 휴가 관리 ]"}
           </h2>
         </div>
