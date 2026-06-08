@@ -19,11 +19,21 @@ public class FileAttachmentResponse {
     private LocalDateTime createdAt;
 
     public static FileAttachmentResponse from(FileAttachment fileAttachment) {
+        String downloadUrl = null;
+
+        if (fileAttachment.getInquiry() != null) {
+            downloadUrl = "/api/inquiries/" + fileAttachment.getInquiry().getInquiryId()
+                    + "/files/" + fileAttachment.getFileId() + "/download";
+        } else if (fileAttachment.getApproval() != null) {
+            downloadUrl = "/api/approvals/" + fileAttachment.getApproval().getApprovalId()
+                    + "/files/" + fileAttachment.getFileId() + "/download";
+        }
+
         return new FileAttachmentResponse(
                 fileAttachment.getFileId(),
                 fileAttachment.getFileName(),
                 fileAttachment.getFileUrl(),
-                "/api/inquiries/" + fileAttachment.getInquiry().getInquiryId() + "/files/" + fileAttachment.getFileId() + "/download",
+                downloadUrl,
                 fileAttachment.getFileType(),
                 fileAttachment.getFileSize(),
                 fileAttachment.getCreatedAt()

@@ -3,9 +3,9 @@ spring:
     import: optional:classpath:application-secret.yml  # 💥 핵심: 비밀 문서 강제 호출!
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/leandash_test?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
+    url: jdbc:mysql://localhost:3306/leandash?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
     username: root
-    password: 4144
+    password: bugil123!
 
   jpa:
     hibernate:

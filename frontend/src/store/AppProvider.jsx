@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { getMyProfileApi } from "@/api/userApi";
 export const AppContext = createContext(undefined);
 const SETTINGS_KEY = "leandash_custom_settings";
 
@@ -24,282 +25,7 @@ const defaultCustomSettings = {
   ],
 };
 const initialEmployees = [
-    {
-        id: 0,
-        name: "관리자",
-        department: "경영진",
-        position: "대표이사",
-        email: "admin@company.com",
-        phone: "010-0000-0000",
-        status: "업무 중",
-        mbti: "ENTJ",
-        hireDate: "2015-01-01",
-        role: "최고관리자",
-    },
-    {
-        id: 1,
-        name: "홍길동",
-        department: "개발팀",
-        position: "개발 팀장",
-        email: "hong@company.com",
-        phone: "010-1234-5678",
-        status: "업무 중",
-        mbti: "INTJ",
-        hireDate: "2020-03-15",
-        role: "팀장",
-    },
-    {
-        id: 2,
-        name: "김민수",
-        department: "개발팀",
-        position: "시니어 개발자",
-        email: "kim@company.com",
-        phone: "010-2345-6789",
-        status: "업무 중",
-        mbti: "ENFP",
-        hireDate: "2022-01-10",
-        role: "일반직원",
-    },
-    {
-        id: 3,
-        name: "박지훈",
-        department: "개발팀",
-        position: "주니어 개발자",
-        email: "park.j@company.com",
-        phone: "010-2222-3333",
-        status: "업무 중",
-        mbti: "INTP",
-        hireDate: "2024-03-01",
-        role: "일반직원",
-    },
-    {
-        id: 4,
-        name: "최유진",
-        department: "개발팀",
-        position: "프론트엔드 개발자",
-        email: "choi@company.com",
-        phone: "010-3333-4444",
-        status: "집중 모드",
-        mbti: "ISFP",
-        hireDate: "2023-06-15",
-        role: "일반직원",
-    },
-    {
-        id: 5,
-        name: "강서현",
-        department: "개발팀",
-        position: "백엔드 개발자",
-        email: "kang@company.com",
-        phone: "010-4444-5555",
-        status: "업무 중",
-        mbti: "ISTP",
-        hireDate: "2023-08-20",
-        role: "일반직원",
-    },
-    {
-        id: 6,
-        name: "이지은",
-        department: "마케팅팀",
-        position: "마케팅 팀장",
-        email: "lee@company.com",
-        phone: "010-3456-7890",
-        status: "자리 비움",
-        mbti: "ESFJ",
-        hireDate: "2019-06-01",
-        role: "팀장",
-    },
-    {
-        id: 7,
-        name: "윤서아",
-        department: "마케팅팀",
-        position: "마케팅 매니저",
-        email: "yoon@company.com",
-        phone: "010-5555-6666",
-        status: "업무 중",
-        mbti: "ENFJ",
-        hireDate: "2021-04-10",
-        role: "일반직원",
-    },
-    {
-        id: 8,
-        name: "정민호",
-        department: "마케팅팀",
-        position: "콘텐츠 기획자",
-        email: "jung.m@company.com",
-        phone: "010-6666-7777",
-        status: "업무 중",
-        mbti: "INFP",
-        hireDate: "2022-11-05",
-        role: "일반직원",
-    },
-    {
-        id: 9,
-        name: "한소율",
-        department: "마케팅팀",
-        position: "디지털 마케터",
-        email: "han@company.com",
-        phone: "010-7777-8888",
-        status: "자리 비움",
-        mbti: "ESFP",
-        hireDate: "2023-02-14",
-        role: "일반직원",
-    },
-    {
-        id: 10,
-        name: "박철수",
-        department: "인사팀",
-        position: "인사 팀장",
-        email: "park@company.com",
-        phone: "010-4567-8901",
-        status: "업무 중",
-        mbti: "ISTJ",
-        hireDate: "2018-03-20",
-        role: "팀장",
-    },
-    {
-        id: 11,
-        name: "임채원",
-        department: "인사팀",
-        position: "인사 담당",
-        email: "lim@company.com",
-        phone: "010-8888-9999",
-        status: "업무 중",
-        mbti: "ISFJ",
-        hireDate: "2021-07-01",
-        role: "일반직원",
-    },
-    {
-        id: 12,
-        name: "오지훈",
-        department: "인사팀",
-        position: "채용 담당",
-        email: "oh@company.com",
-        phone: "010-9999-0000",
-        status: "업무 중",
-        mbti: "ESTJ",
-        hireDate: "2022-09-12",
-        role: "일반직원",
-    },
-    {
-        id: 13,
-        name: "정수진",
-        department: "경영지원팀",
-        position: "경영지원 팀장",
-        email: "jung@company.com",
-        phone: "010-5678-9012",
-        status: "업무 중",
-        mbti: "INFP",
-        hireDate: "2021-09-01",
-        role: "팀장",
-    },
-    {
-        id: 14,
-        name: "신동욱",
-        department: "경영지원팀",
-        position: "총무 담당",
-        email: "shin@company.com",
-        phone: "010-1111-2222",
-        status: "업무 중",
-        mbti: "ESTP",
-        hireDate: "2022-05-20",
-        role: "일반직원",
-    },
-    {
-        id: 15,
-        name: "송하은",
-        department: "경영지원팀",
-        position: "재무 담당",
-        email: "song@company.com",
-        phone: "010-2222-1111",
-        status: "집중 모드",
-        mbti: "INTJ",
-        hireDate: "2020-11-30",
-        role: "일반직원",
-    },
-    {
-        id: 16,
-        name: "배준서",
-        department: "디자인팀",
-        position: "디자인 팀장",
-        email: "bae@company.com",
-        phone: "010-3333-2222",
-        status: "업무 중",
-        mbti: "INFJ",
-        hireDate: "2019-01-15",
-        role: "팀장",
-    },
-    {
-        id: 17,
-        name: "나예린",
-        department: "디자인팀",
-        position: "UI/UX 디자이너",
-        email: "na@company.com",
-        phone: "010-4444-3333",
-        status: "업무 중",
-        mbti: "ISFP",
-        hireDate: "2021-08-10",
-        role: "일반직원",
-    },
-    {
-        id: 18,
-        name: "류민재",
-        department: "디자인팀",
-        position: "그래픽 디자이너",
-        email: "ryu@company.com",
-        phone: "010-5555-4444",
-        status: "휴가 중",
-        mbti: "ENFP",
-        hireDate: "2022-03-25",
-        role: "일반직원",
-    },
-    {
-        id: 19,
-        name: "서윤아",
-        department: "디자인팀",
-        position: "브랜드 디자이너",
-        email: "seo@company.com",
-        phone: "010-6666-5555",
-        status: "업무 중",
-        mbti: "ESFP",
-        hireDate: "2023-01-18",
-        role: "일반직원",
-    },
-    {
-        id: 20,
-        name: "장하늘",
-        department: "영업팀",
-        position: "영업 팀장",
-        email: "jang@company.com",
-        phone: "010-7777-6666",
-        status: "자리 비움",
-        mbti: "ENTJ",
-        hireDate: "2018-07-01",
-        role: "팀장",
-    },
-    {
-        id: 21,
-        name: "문지혜",
-        department: "영업팀",
-        position: "영업 매니저",
-        email: "moon@company.com",
-        phone: "010-8888-7777",
-        status: "업무 중",
-        mbti: "ENFJ",
-        hireDate: "2020-05-12",
-        role: "일반직원",
-    },
-    {
-        id: 22,
-        name: "곽태양",
-        department: "영업팀",
-        position: "영업 사원",
-        email: "kwak@company.com",
-        phone: "010-9999-8888",
-        status: "자리 비움",
-        mbti: "ESTP",
-        hireDate: "2023-04-05",
-        role: "일반직원",
-    },
+   
 ];
 const initialNotices = [
     {
@@ -381,44 +107,8 @@ const initialNotices = [
     },
 ];
 const initialVacationRequests = [
-    {
-        id: 1,
-        type: "연차",
-        startDate: "2026-04-15",
-        endDate: "2026-04-17",
-        days: 3,
-        reason: "개인 사유",
-        status: "대기",
-        requestDate: "2026-04-08",
-        employeeId: 1,
-        employeeName: "홍길동",
-    },
-    {
-        id: 2,
-        type: "반차",
-        startDate: "2026-04-20",
-        endDate: "2026-04-20",
-        days: 0.5,
-        reason: "병원 진료",
-        status: "승인",
-        requestDate: "2026-04-05",
-        approver: "박철수",
-        employeeId: 1,
-        employeeName: "홍길동",
-    },
-    {
-        id: 3,
-        type: "연차",
-        startDate: "2026-05-01",
-        endDate: "2026-05-03",
-        days: 3,
-        reason: "가족 여행",
-        status: "대기",
-        requestDate: "2026-04-07",
-        employeeId: 1,
-        employeeName: "홍길동",
-    },
-];
+
+]
 
 const initialDocuments = [
   {
@@ -686,25 +376,220 @@ export function AppProvider({ children }) {
     ])
   );
 
+  const normalizeRole = (role) => {
+    if (role === "ADMIN" || role === "최고관리자") return "최고관리자";
+    if (role === "MANAGER" || role === "팀장") return "팀장";
+    return "일반직원";
+  };
+
+  const normalizeStatus = (status) => {
+    if (status === "ONLINE") return "업무 중";
+    if (status === "AWAY") return "자리 비움";
+    if (status === "VACATION") return "휴가 중";
+    if (status === "FOCUS") return "집중 모드";
+    if (status === "OFFLINE") return "오프라인";
+    return status || "업무 중";
+  };
+
+  const getEmployeeNo = (user) => {
+    return user?.employeeNo || user?.employee_no || user?.employeeId || user?.id || "";
+  };
+
+  const findEmployeeByEmployeeNo = (employeeNo) => {
+    if (!employeeNo) return null;
+
+    const normalizedEmployeeNo = String(employeeNo).trim().toLowerCase();
+
+    return employees.find(
+      (emp) => String(getEmployeeNo(emp)).trim().toLowerCase() === normalizedEmployeeNo
+    );
+  };
+
+  const getDepartmentName = (user) => {
+    if (!user) return "";
+
+    if (typeof user.department === "string") return user.department;
+
+    return (
+      user.departmentName ||
+      user.department_name ||
+      user.department?.departmentName ||
+      user.department?.department_name ||
+      user.department?.name ||
+      user.department?.departmentTitle ||
+      ""
+    );
+  };
+
+  const getDepartmentId = (user) => {
+    if (!user) return undefined;
+
+    return (
+      user.departmentId ||
+      user.department_id ||
+      user.department?.departmentId ||
+      user.department?.department_id ||
+      user.department?.id
+    );
+  };
+
+  const buildApiUser = (apiUser, fallbackEmployee = null) => {
+    const employeeNo =
+      apiUser?.employeeNo ||
+      apiUser?.employee_no ||
+      fallbackEmployee?.employeeNo ||
+      "";
+
+    const userId =
+      apiUser?.userId ||
+      apiUser?.user_id ||
+      apiUser?.id ||
+      fallbackEmployee?.id ||
+      employeeNo ||
+      "api-user";
+
+    return {
+      ...(fallbackEmployee || {}),
+      id: userId,
+      employeeNo,
+      name:
+        apiUser?.userName ||
+        apiUser?.user_name ||
+        apiUser?.name ||
+        fallbackEmployee?.name ||
+        employeeNo ||
+        "사용자",
+      email: apiUser?.email || fallbackEmployee?.email || "",
+      department: getDepartmentName(apiUser) || fallbackEmployee?.department || "",
+      departmentId: getDepartmentId(apiUser) || fallbackEmployee?.departmentId,
+      position: apiUser?.position || fallbackEmployee?.position || "",
+      phone: apiUser?.phone || fallbackEmployee?.phone || "",
+      address: apiUser?.address || fallbackEmployee?.address || "",
+      birthDate:
+        apiUser?.birthDate ||
+        apiUser?.birth_date ||
+        fallbackEmployee?.birthDate ||
+        "",
+      gender: apiUser?.gender || fallbackEmployee?.gender || "",
+      status: normalizeStatus(
+        apiUser?.userStatus || apiUser?.user_status || apiUser?.status || fallbackEmployee?.status
+      ),
+      role: normalizeRole(apiUser?.role || fallbackEmployee?.role),
+      hireDate:
+        apiUser?.hireDate ||
+        apiUser?.hire_date ||
+        apiUser?.createdAt?.slice?.(0, 10) ||
+        apiUser?.created_at?.slice?.(0, 10) ||
+        fallbackEmployee?.hireDate ||
+        "",
+    };
+  };
+
+  const saveCurrentUserToStorage = (user, rawUser = {}) => {
+    localStorage.setItem("isLogin", "true");
+    localStorage.setItem("employeeNo", user?.employeeNo || "");
+    localStorage.setItem("userEmail", user?.email || "");
+    localStorage.setItem("userName", user?.name || "");
+    localStorage.setItem("userRole", rawUser?.role || user?.role || "USER");
+    localStorage.setItem(
+      "userStatus",
+      rawUser?.userStatus || rawUser?.user_status || rawUser?.status || user?.status || "ONLINE"
+    );
+    localStorage.setItem("userPhone", user?.phone || "");
+    localStorage.setItem("userPosition", user?.position || "");
+    localStorage.setItem("userDepartment", user?.department || "");
+  };
+
+  const loadMyProfile = async (fallbackUser = null) => {
+    const token = localStorage.getItem("accessToken");
+
+    if (!token) return null;
+
+    try {
+      const profile = await getMyProfileApi();
+      const matchedEmployee = findEmployeeByEmployeeNo(
+        profile?.employeeNo || profile?.employee_no || fallbackUser?.employeeNo
+      );
+      const normalizedUser = buildApiUser(profile, matchedEmployee || fallbackUser);
+
+      saveCurrentUserToStorage(normalizedUser, profile);
+      setCurrentUser(normalizedUser);
+      setIsAuthenticated(true);
+
+      return normalizedUser;
+    } catch (error) {
+      console.warn("내 정보 API 조회 실패. 저장된 로그인 정보로 임시 표시합니다.", error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const savedLogin = localStorage.getItem("isLogin") === "true";
+    const savedEmployeeNo = localStorage.getItem("employeeNo");
     const savedEmail = localStorage.getItem("userEmail");
+    const savedUserName = localStorage.getItem("userName");
+    const savedRole = localStorage.getItem("userRole");
+    const savedStatus = localStorage.getItem("userStatus");
+    const savedPhone = localStorage.getItem("userPhone");
+    const savedPosition = localStorage.getItem("userPosition");
+    const savedDepartment = localStorage.getItem("userDepartment");
+    const savedLoginMode = localStorage.getItem("loginMode");
 
-    if (!savedLogin || !savedEmail) return;
+    if (!savedLogin) return;
 
-    const savedUser = employees.find(
-      (emp) => emp.email?.toLowerCase() === savedEmail.toLowerCase()
-    );
+    const savedEmployee =
+      findEmployeeByEmployeeNo(savedEmployeeNo) ||
+      employees.find(
+        (emp) => savedEmail && emp.email?.toLowerCase() === savedEmail.toLowerCase()
+      );
 
-    if (savedUser) {
-      setCurrentUser(savedUser);
+    if (savedLoginMode === "api") {
+      const fallbackUser = buildApiUser(
+        {
+          employeeNo: savedEmployeeNo || savedEmployee?.employeeNo || "api-user",
+          userName: savedUserName || savedEmployee?.name || savedEmployeeNo || "사용자",
+          email: savedEmail || savedEmployee?.email || "",
+          phone: savedPhone || savedEmployee?.phone || "",
+          position: savedPosition || savedEmployee?.position || "",
+          departmentName: savedDepartment || savedEmployee?.department || "",
+          role: savedRole || "USER",
+          userStatus: savedStatus || "ONLINE",
+        },
+        savedEmployee
+      );
+
+      setCurrentUser(fallbackUser);
+      setIsAuthenticated(true);
+      loadMyProfile(fallbackUser);
+      return;
+    }
+
+    if (savedEmployee) {
+      setCurrentUser(savedEmployee);
+      setIsAuthenticated(true);
+      return;
+    }
+
+    if (savedEmployeeNo || savedEmail) {
+      setCurrentUser(
+        buildApiUser({
+          employeeNo: savedEmployeeNo || "api-user",
+          userName: savedUserName || savedEmployeeNo || "사용자",
+          email: savedEmail || "",
+          phone: savedPhone || "",
+          position: savedPosition || "",
+          departmentName: savedDepartment || "",
+          role: savedRole || "USER",
+          userStatus: savedStatus || "ONLINE",
+        })
+      );
       setIsAuthenticated(true);
     }
   }, [employees]);
 
   useEffect(() => {
-    if (currentUser) {
-      const updatedUser = employees.find((emp) => emp.id === currentUser.id);
+    if (currentUser && localStorage.getItem("loginMode") !== "api") {
+      const updatedUser = findEmployeeByEmployeeNo(currentUser.employeeNo) || employees.find((emp) => emp.id === currentUser.id);
 
       if (updatedUser) {
         setCurrentUser(updatedUser);
@@ -886,25 +771,59 @@ export function AppProvider({ children }) {
     return { total, used, remaining };
   };
 
-  const login = (email, password) => {
-    const user = employees.find(
-      (emp) => emp.email?.toLowerCase() === email.toLowerCase()
-    );
+  const login = (employeeNo, password, apiResult = null) => {
+    const apiUser = apiResult?.user || apiResult?.data?.user || apiResult?.data || apiResult;
+    const inputEmployeeNo = String(
+      apiUser?.employeeNo || apiUser?.employee_no || employeeNo || ""
+    ).trim();
+
+    if (apiResult?.accessToken || apiResult?.token || apiResult?.data?.accessToken || apiResult?.data?.token) {
+      const matchedEmployee = findEmployeeByEmployeeNo(inputEmployeeNo);
+      const normalizedUser = buildApiUser(apiUser, matchedEmployee);
+
+      saveCurrentUserToStorage(normalizedUser, apiUser);
+      localStorage.setItem("loginMode", "api");
+
+      setCurrentUser(normalizedUser);
+      setIsAuthenticated(true);
+      loadMyProfile(normalizedUser);
+      return true;
+    }
+
+    const user = findEmployeeByEmployeeNo(inputEmployeeNo);
 
     if (user) {
       localStorage.setItem("isLogin", "true");
-      localStorage.setItem("userEmail", user.email);
+      localStorage.setItem("employeeNo", user.employeeNo || inputEmployeeNo);
+      localStorage.setItem("userEmail", user.email || "");
+      localStorage.setItem("userName", user.name || "");
+      localStorage.setItem("userRole", user.role || "일반직원");
+      localStorage.setItem("userStatus", user.status || "업무 중");
+      localStorage.setItem("userPhone", user.phone || "");
+      localStorage.setItem("userPosition", user.position || "");
+      localStorage.setItem("userDepartment", user.department || "");
+      localStorage.setItem("loginMode", "dummy");
 
       setCurrentUser(user);
       setIsAuthenticated(true);
-    } else {
-      alert("등록되지 않은 사용자입니다.");
+      return true;
     }
+
+    return false;
   };
 
   const logout = () => {
+    localStorage.removeItem("accessToken");
     localStorage.removeItem("isLogin");
+    localStorage.removeItem("employeeNo");
     localStorage.removeItem("userEmail");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("userStatus");
+    localStorage.removeItem("userPhone");
+    localStorage.removeItem("userPosition");
+    localStorage.removeItem("userDepartment");
+    localStorage.removeItem("loginMode");
 
     setCurrentUser(null);
     setIsAuthenticated(false);

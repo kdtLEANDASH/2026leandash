@@ -61,14 +61,37 @@ public class UserService {
 
     @Transactional
     public UserLoginResponse login(UserLoginRequest request) {
-        User user = userRepository.findByEmployeeNo(request.getEmployeeNo())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사번입니다."));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        System.out.println("===== 로그인 시도 =====");
+        System.out.println("입력 사번: " + request.getEmployeeNo());
+        System.out.println("입력 비밀번호: " + request.getPassword());
+
+        User user = userRepository.findByEmployeeNo(request.getEmployeeNo())
+                .orElse(null);
+
+        System.out.println("조회된 유저: " + user);
+
+        if (user == null) {
+            System.out.println("유저 조회 실패");
+            throw new IllegalArgumentException("존재하지 않는 사번입니다.");
+        }
+
+        System.out.println("DB 비밀번호: " + user.getPassword());
+
+        boolean matches =
+                passwordEncoder.matches(
+                        request.getPassword(),
+                        user.getPassword()
+                );
+
+        System.out.println("비밀번호 일치 여부: " + matches);
+
+        if (!matches) {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
 
         user.updateUserStatus(UserStatus.ONLINE);
+
         UserPrincipal principal = UserPrincipal.from(user);
 
         return UserLoginResponse.builder()

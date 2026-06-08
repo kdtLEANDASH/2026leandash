@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // src/components/Login.jsx (형 로그인 화면 파일)
 import React, { useState } from 'react';
 // 💡 방금 만든 도구상자에서 loginAPI 스킬만 쏙 빼온다!
@@ -45,3 +46,26 @@ const Login = () => {
 };
 
 export default Login;
+=======
+import apiRequest from "./client";
+
+export function loginApi(loginData) {
+  return apiRequest("/api/users/login", {
+    method: "POST",
+    body: JSON.stringify(loginData),
+  });
+}
+
+export function signupApi(signupData) {
+  return apiRequest("/api/users/signup", {
+    method: "POST",
+    body: JSON.stringify(signupData),
+  });
+}
+
+export function logoutApi() {
+  return apiRequest("/api/users/logout", {
+    method: "POST",
+  });
+}
+>>>>>>> ad1519966e2cee67e8365d500572357c2b2e17c6
