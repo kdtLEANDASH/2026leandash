@@ -22,10 +22,10 @@ import { useAppContext } from "../../store/AppProvider";
 import { cn } from "../../components/UI/utils";
 import { scheduleApi } from "../../api/scheduleApi";
 import { vacationApi } from "../../api/vacationApi";
+import { getNoticesApi } from "../../api/noticeApi";
 
 export function DashboardPage() {
   const {
-    notices = [],
     getVacationBalance,
     currentUser,
     employees = [],
@@ -51,6 +51,7 @@ export function DashboardPage() {
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [vacationRequests, setVacationRequests] = useState([]);
   const [apiUsers, setApiUsers] = useState([]);
+  const [apiNotices, setApiNotices] = useState([]);
 
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -76,6 +77,11 @@ export function DashboardPage() {
     if (!value || typeof value !== "string") return "";
     if (!value.includes("T")) return "";
     return value.split("T")[1]?.slice(0, 5) || "";
+  };
+
+  const unwrapResponse = (result) => {
+    if (Array.isArray(result)) return result;
+    return result?.data ?? result ?? [];
   };
 
   const toLocalDate = (dateStr) => {
@@ -217,6 +223,30 @@ export function DashboardPage() {
   }, [API_BASE_URL]);
 
   useEffect(() => {
+    const loadNotices = async () => {
+      try {
+        const data = unwrapResponse(await getNoticesApi());
+        const normalized = Array.isArray(data)
+          ? data.map((notice) => ({
+              id: notice.noticeId ?? notice.id,
+              title: notice.title ?? "",
+              author: notice.writerName ?? notice.author ?? "관리자",
+              date: formatDate(notice.createdAt ?? notice.date),
+              isPinned: Boolean(notice.isPinned),
+            }))
+          : [];
+
+        setApiNotices(normalized);
+      } catch (error) {
+        console.error("대시보드 공지 조회 실패:", error);
+        setApiNotices([]);
+      }
+    };
+
+    loadNotices();
+  }, []);
+
+  useEffect(() => {
     const loadVacations = async () => {
       try {
         const data = await vacationApi.getAll();
@@ -300,7 +330,7 @@ export function DashboardPage() {
     .sort((a, b) => toLocalDate(a.date) - toLocalDate(b.date))
     .slice(0, 5);
 
-  const recentNotices = notices.slice(0, 5);
+  const recentNotices = apiNotices.slice(0, 5);
 
   const isAdmin =
     loginUser.role === "ADMIN" || loginUser.role === "최고관리자";
@@ -322,7 +352,7 @@ export function DashboardPage() {
       })
     : [];
 
-  const activeEmployees = employees.filter(
+  const activeEmployees = (apiUsers.length > 0 ? apiUsers : employees).filter(
     (emp) => emp.status !== "오프라인"
   ).length;
 
