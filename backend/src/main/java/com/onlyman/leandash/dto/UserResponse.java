@@ -19,18 +19,27 @@ public class UserResponse {
     private String userStatus;
     private String role;
 
-    public static UserResponse from(User user) {
+    private Long id;
+    private String name;
+    private String department;
+
+  public static UserResponse from(User user) {
         return UserResponse.builder()
                 .userId(user.getUserId())
                 .employeeNo(user.getEmployeeNo())
                 .userName(user.getUserName())
-                .departmentId(user.getDepartment().getDepartmentId())
-                .departmentName(user.getDepartment().getDepartmentName())
+                .departmentId(user.getDepartment() == null ? null : user.getDepartment().getDepartmentId())
+                .departmentName(user.getDepartment() == null ? null : user.getDepartment().getDepartmentName())
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .position(user.getPosition())
                 .userStatus(user.getUserStatus())
                 .role(user.getRoleEnum().name())
+
+               
+                .id(user.getUserId())
+                .name(user.getUserName())
+                .department(user.getDepartment() == null ? null : user.getDepartment().getDepartmentName())
                 .build();
     }
 }

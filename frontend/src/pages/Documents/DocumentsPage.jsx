@@ -5,7 +5,6 @@ import {
   Download,
   Trash2,
   Search,
-  ArrowLeft,
   Plus,
   ChevronDown,
 } from "lucide-react";
@@ -21,10 +20,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/UI/card";
+import { cn } from "@/components/UI/utils";
 
 export function DocumentsPage() {
-  const { currentUser, employees, documents, addDocument, deleteDocument } =
-    useAppContext();
+  const {
+    currentUser,
+    employees,
+    documents,
+    addDocument,
+    deleteDocument,
+    customSettings,
+  } = useAppContext();
+
+  const isDark = customSettings?.darkMode;
 
   const [mode, setMode] = useState("list");
   const [selectedDocument, setSelectedDocument] = useState(null);
@@ -33,8 +41,7 @@ export function DocumentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  //페이지네이션
-  const documentsPerPage = 3;  
+  const documentsPerPage = 3;
 
   const [formTitle, setFormTitle] = useState("");
   const [formDepartment, setFormDepartment] = useState(
@@ -42,6 +49,44 @@ export function DocumentsPage() {
   );
   const [formContent, setFormContent] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
+
+  const pageClass = isDark
+    ? "bg-[#27272a] text-white"
+    : "bg-gray-50 text-gray-900";
+
+  const cardClass = isDark
+    ? "bg-[#35353d] border-[#5c5c73] text-white"
+    : "bg-white border-gray-200";
+
+  const innerClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white"
+    : "bg-gray-50 border-gray-200";
+
+  const inputClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white placeholder:text-zinc-400"
+    : "bg-white";
+
+  const tableHeaderClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-zinc-300"
+    : "bg-gray-50 border-gray-200 text-gray-600";
+
+  const rowClass = isDark
+    ? "hover:bg-[#48484f] text-zinc-200"
+    : "hover:bg-gray-50 text-gray-900";
+
+  const divideClass = isDark ? "divide-[#5c5c73]" : "divide-gray-100";
+
+  const textMain = isDark ? "text-white" : "text-gray-900";
+  const textSub = isDark ? "text-zinc-300" : "text-gray-600";
+  const textMuted = isDark ? "text-zinc-400" : "text-gray-500";
+
+  const primaryButtonClass = isDark
+    ? "bg-[#5c5c73] hover:bg-[#6a6a82] text-white"
+    : "bg-blue-600 hover:bg-blue-700";
+
+  const outlineButtonClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white hover:bg-[#48484f]"
+    : "";
 
   const departments = useMemo(() => {
     const list = [...new Set(employees.map((emp) => emp.department))];
@@ -102,6 +147,10 @@ export function DocumentsPage() {
       return "bg-orange-100 text-orange-700 hover:bg-orange-100";
     }
 
+    if (extension === "hwpx") {
+      return "bg-blue-100 text-blue-700 hover:bg-blue-100";
+    }
+
     return "bg-gray-100 text-gray-700 hover:bg-gray-100";
   };
 
@@ -150,11 +199,11 @@ export function DocumentsPage() {
 
   if (mode === "create") {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
-
-
-        <Card>
-          <CardHeader>
+      <div className={cn("p-6 max-w-5xl mx-auto min-h-full", pageClass)}>
+        <Card className={cardClass}>
+          <CardHeader
+            className={isDark ? "border-b border-[#5c5c73]" : ""}
+          >
             <CardTitle>문서 등록</CardTitle>
           </CardHeader>
 
@@ -167,7 +216,7 @@ export function DocumentsPage() {
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   placeholder="문서 제목을 입력하세요"
-                  className="h-11"
+                  className={cn("h-11", inputClass)}
                 />
               </div>
 
@@ -179,16 +228,30 @@ export function DocumentsPage() {
                     id="department"
                     value={formDepartment}
                     onChange={(e) => setFormDepartment(e.target.value)}
-                    className="w-full h-11 appearance-none rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm focus:outline-none focus:ring-0 focus:border-gray-300"
+                    className={cn(
+                      "w-full h-11 appearance-none rounded-md border px-3 pr-10 text-sm focus:outline-none focus:ring-0",
+                      isDark
+                        ? "bg-[#2f2f36] border-[#5c5c73] text-white"
+                        : "border-gray-300 bg-white text-gray-900 focus:border-gray-300"
+                    )}
                   >
                     {departments.map((dept) => (
-                      <option key={dept} value={dept}>
+                      <option
+                        key={dept}
+                        value={dept}
+                        className={isDark ? "bg-[#2f2f36] text-white" : ""}
+                      >
                         {dept}
                       </option>
                     ))}
                   </select>
 
-                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-gray-500" />
+                  <ChevronDown
+                    className={cn(
+                      "pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2",
+                      isDark ? "text-zinc-400" : "text-gray-500"
+                    )}
+                  />
                 </div>
               </div>
 
@@ -199,7 +262,7 @@ export function DocumentsPage() {
                   value={formContent}
                   onChange={(e) => setFormContent(e.target.value)}
                   placeholder="문서에 대한 설명, 공유 내용, 참고 사항 등을 작성하세요."
-                  className="min-h-[260px] resize-none"
+                  className={cn("min-h-[260px] resize-none", inputClass)}
                 />
               </div>
 
@@ -208,13 +271,28 @@ export function DocumentsPage() {
 
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <FileText className="size-7 text-gray-400" />
-                    <Plus className="absolute -right-2 bottom-0 size-4 text-gray-400" />
+                    <FileText
+                      className={cn(
+                        "size-7",
+                        isDark ? "text-zinc-400" : "text-gray-400"
+                      )}
+                    />
+                    <Plus
+                      className={cn(
+                        "absolute -right-2 bottom-0 size-4",
+                        isDark ? "text-zinc-400" : "text-gray-400"
+                      )}
+                    />
                   </div>
 
                   <label
                     htmlFor="file"
-                    className="inline-flex cursor-pointer items-center border border-gray-400 bg-white px-5 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"
+                    className={cn(
+                      "inline-flex cursor-pointer items-center border px-5 py-2 text-sm font-medium",
+                      isDark
+                        ? "border-[#5c5c73] bg-[#2f2f36] text-white hover:bg-[#48484f]"
+                        : "border-gray-400 bg-white text-gray-900 hover:bg-gray-50"
+                    )}
                   >
                     파일 선택
                   </label>
@@ -228,16 +306,28 @@ export function DocumentsPage() {
                 />
 
                 {selectedFile && (
-                  <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
-                    <FileText className="size-4 text-gray-500" />
+                  <div className={cn("mt-3 flex items-center gap-2 text-sm", textSub)}>
+                    <FileText
+                      className={cn(
+                        "size-4",
+                        isDark ? "text-zinc-400" : "text-gray-500"
+                      )}
+                    />
                     <span>{selectedFile.name}</span>
-                    <span className="text-gray-400">·</span>
+                    <span className={isDark ? "text-zinc-500" : "text-gray-400"}>
+                      ·
+                    </span>
                     <span>{getFileSize(selectedFile.size)}</span>
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <div
+                className={cn(
+                  "flex justify-end gap-3 pt-4 border-t",
+                  isDark ? "border-[#5c5c73]" : "border-gray-100"
+                )}
+              >
                 <Button
                   type="button"
                   variant="outline"
@@ -245,11 +335,12 @@ export function DocumentsPage() {
                     resetForm();
                     setMode("list");
                   }}
+                  className={outlineButtonClass}
                 >
                   취소
                 </Button>
 
-                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                <Button type="submit" className={primaryButtonClass}>
                   <Upload className="size-4 mr-2" />
                   등록하기
                 </Button>
@@ -263,50 +354,68 @@ export function DocumentsPage() {
 
   if (mode === "detail" && selectedDocument) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
-
-
-        <Card>
-          <CardHeader>
+      <div className={cn("p-6 max-w-5xl mx-auto min-h-full", pageClass)}>
+        <Card className={cardClass}>
+          <CardHeader
+            className={isDark ? "border-b border-[#5c5c73]" : ""}
+          >
             <div className="flex items-center gap-2 mb-3">
-              <Badge variant="outline">{selectedDocument.department}</Badge>
+              <Badge
+                variant="outline"
+                className={isDark ? "border-[#5c5c73] text-zinc-200" : ""}
+              >
+                {selectedDocument.department}
+              </Badge>
               <Badge className={getFileTypeColor(selectedDocument.fileName)}>
                 {getFileExtension(selectedDocument.fileName)}
               </Badge>
             </div>
 
-            <CardTitle className="text-2xl">
-              {selectedDocument.title}
-            </CardTitle>
+            <CardTitle className="text-2xl">{selectedDocument.title}</CardTitle>
 
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-500">
+            <div className={cn("mt-3 flex flex-wrap items-center gap-3 text-sm", textMuted)}>
               <span>업로더: {selectedDocument.uploader}</span>
-              <span className="text-gray-300">|</span>
+              <span className={isDark ? "text-zinc-600" : "text-gray-300"}>|</span>
               <span>등록일: {selectedDocument.uploadDate}</span>
             </div>
           </CardHeader>
 
           <CardContent className="space-y-6">
             <div className="min-h-[260px]">
-              <h3 className="font-semibold text-gray-900 mb-3"></h3>
+              <h3 className={cn("font-semibold mb-3", textMain)}></h3>
 
-              <div className="whitespace-pre-wrap leading-relaxed text-gray-700">
+              <div className={cn("whitespace-pre-wrap leading-relaxed", textSub)}>
                 {selectedDocument.description || "등록된 문서 내용이 없습니다."}
               </div>
             </div>
 
-            <div className="border-t border-gray-100 pt-5">
-              <h3 className="font-semibold text-gray-900 mb-3">첨부파일</h3>
+            <div
+              className={cn(
+                "border-t pt-5",
+                isDark ? "border-[#5c5c73]" : "border-gray-100"
+              )}
+            >
+              <h3 className={cn("font-semibold mb-3", textMain)}>첨부파일</h3>
 
-              <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div
+                className={cn(
+                  "flex items-center justify-between gap-4 rounded-lg border p-4",
+                  innerClass
+                )}
+              >
                 <div className="flex items-center gap-3 min-w-0">
-                  <FileText className="size-6 text-gray-500 flex-shrink-0" />
+                  <FileText
+                    className={cn(
+                      "size-6 flex-shrink-0",
+                      isDark ? "text-zinc-400" : "text-gray-500"
+                    )}
+                  />
 
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-900 truncate">
+                    <p className={cn("font-medium truncate", textMain)}>
                       {selectedDocument.fileName}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className={cn("text-sm", textMuted)}>
                       {selectedDocument.fileSize}
                     </p>
                   </div>
@@ -317,13 +426,13 @@ export function DocumentsPage() {
                     href={selectedDocument.fileUrl}
                     download={selectedDocument.fileName}
                   >
-                    <Button variant="outline">
+                    <Button variant="outline" className={outlineButtonClass}>
                       <Download className="size-4 mr-2" />
                       다운로드
                     </Button>
                   </a>
                 ) : (
-                  <Button variant="outline" disabled>
+                  <Button variant="outline" disabled className={outlineButtonClass}>
                     <Download className="size-4 mr-2" />
                     다운로드
                   </Button>
@@ -331,12 +440,21 @@ export function DocumentsPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <div
+              className={cn(
+                "flex justify-end gap-3 pt-4 border-t",
+                isDark ? "border-[#5c5c73]" : "border-gray-100"
+              )}
+            >
               {(currentUser?.role === "최고관리자" ||
                 currentUser?.name === selectedDocument.uploader) && (
                 <Button
                   variant="outline"
-                  className="text-red-600 hover:text-red-700"
+                  className={
+                    isDark
+                      ? "border-red-400 text-red-300 hover:bg-red-950"
+                      : "text-red-600 hover:text-red-700"
+                  }
                   onClick={() => {
                     deleteDocument(selectedDocument.id);
                     setSelectedDocument(null);
@@ -354,6 +472,7 @@ export function DocumentsPage() {
                   setSelectedDocument(null);
                   setMode("list");
                 }}
+                className={outlineButtonClass}
               >
                 목록으로
               </Button>
@@ -365,21 +484,18 @@ export function DocumentsPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className={cn("p-6 max-w-7xl mx-auto min-h-full", pageClass)}>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-1">
+          <h2 className={cn("text-2xl font-semibold mb-1", textMain)}>
             문서함
           </h2>
-          <p className="text-gray-600">
+          <p className={textSub}>
             부서별 문서를 업로드하고 공유할 수 있습니다.
           </p>
         </div>
 
-        <Button
-          className="bg-blue-600 hover:bg-blue-700"
-          onClick={() => setMode("create")}
-        >
+        <Button className={primaryButtonClass} onClick={() => setMode("create")}>
           <Upload className="size-4 mr-2" />
           문서 업로드
         </Button>
@@ -387,7 +503,12 @@ export function DocumentsPage() {
 
       <div className="flex flex-col md:flex-row gap-3 mb-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
+          <Search
+            className={cn(
+              "absolute left-3 top-1/2 -translate-y-1/2 size-5",
+              isDark ? "text-zinc-400" : "text-gray-400"
+            )}
+          />
 
           <Input
             value={searchTerm}
@@ -396,7 +517,7 @@ export function DocumentsPage() {
               setCurrentPage(1);
             }}
             placeholder="문서명, 파일명, 업로더 검색..."
-            className="pl-10 bg-white"
+            className={cn("pl-10", inputClass)}
           />
         </div>
 
@@ -406,19 +527,35 @@ export function DocumentsPage() {
             setSelectedDepartment(e.target.value);
             setCurrentPage(1);
           }}
-          className="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={cn(
+            "h-10 rounded-md border px-3 text-sm focus:outline-none",
+            isDark
+              ? "bg-[#2f2f36] border-[#5c5c73] text-white"
+              : "border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
+          )}
         >
-          <option value="전체">전체 부서</option>
+          <option value="전체" className={isDark ? "bg-[#2f2f36] text-white" : ""}>
+            전체 부서
+          </option>
           {departments.map((dept) => (
-            <option key={dept} value={dept}>
+            <option
+              key={dept}
+              value={dept}
+              className={isDark ? "bg-[#2f2f36] text-white" : ""}
+            >
               {dept}
             </option>
           ))}
         </select>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[70px_120px_1fr_100px_120px_130px_120px] px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-600">
+      <div className={cn("border rounded-lg overflow-hidden", cardClass)}>
+        <div
+          className={cn(
+            "grid grid-cols-[70px_120px_1fr_100px_120px_130px_120px] px-4 py-3 border-b text-sm font-medium",
+            tableHeaderClass
+          )}
+        >
           <div>번호</div>
           <div>부서</div>
           <div>문서명</div>
@@ -429,7 +566,7 @@ export function DocumentsPage() {
         </div>
 
         {filteredDocuments.length > 0 ? (
-          <div className="divide-y divide-gray-100">
+          <div className={cn("divide-y", divideClass)}>
             {paginatedDocuments.map((doc, index) => (
               <div
                 key={doc.id}
@@ -437,25 +574,39 @@ export function DocumentsPage() {
                   setSelectedDocument(doc);
                   setMode("detail");
                 }}
-                className="grid grid-cols-[70px_120px_1fr_100px_120px_130px_120px] items-center px-4 py-4 text-sm hover:bg-gray-50 transition-colors cursor-pointer"
+                className={cn(
+                  "grid grid-cols-[70px_120px_1fr_100px_120px_130px_120px] items-center px-4 py-4 text-sm transition-colors cursor-pointer",
+                  rowClass
+                )}
               >
-                <div className="text-gray-500">
-                  {filteredDocuments.length - ((currentPage - 1) * documentsPerPage + index)}
+                <div className={textMuted}>
+                  {filteredDocuments.length -
+                    ((currentPage - 1) * documentsPerPage + index)}
                 </div>
 
                 <div>
-                  <Badge variant="outline">{doc.department}</Badge>
+                  <Badge
+                    variant="outline"
+                    className={isDark ? "border-[#5c5c73] text-zinc-200" : ""}
+                  >
+                    {doc.department}
+                  </Badge>
                 </div>
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <FileText className="size-4 text-gray-500 flex-shrink-0" />
-                    <span className="font-medium text-gray-900 truncate">
+                    <FileText
+                      className={cn(
+                        "size-4 flex-shrink-0",
+                        isDark ? "text-zinc-400" : "text-gray-500"
+                      )}
+                    />
+                    <span className={cn("font-medium truncate", textMain)}>
                       {doc.title}
                     </span>
                   </div>
 
-                  <div className="text-xs text-gray-500 mt-1 truncate">
+                  <div className={cn("text-xs mt-1 truncate", textMuted)}>
                     {doc.description || doc.fileName}
                   </div>
                 </div>
@@ -466,9 +617,9 @@ export function DocumentsPage() {
                   </Badge>
                 </div>
 
-                <div className="text-gray-600">{doc.uploader}</div>
+                <div className={textSub}>{doc.uploader}</div>
 
-                <div className="text-gray-500">{doc.uploadDate}</div>
+                <div className={textMuted}>{doc.uploadDate}</div>
 
                 <div className="flex items-center justify-center gap-2">
                   {doc.fileUrl ? (
@@ -477,7 +628,7 @@ export function DocumentsPage() {
                       download={doc.fileName}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className={outlineButtonClass}>
                         <Download className="size-4" />
                       </Button>
                     </a>
@@ -487,6 +638,7 @@ export function DocumentsPage() {
                       size="sm"
                       disabled
                       onClick={(e) => e.stopPropagation()}
+                      className={outlineButtonClass}
                     >
                       <Download className="size-4" />
                     </Button>
@@ -497,7 +649,11 @@ export function DocumentsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-red-600 hover:text-red-700"
+                      className={
+                        isDark
+                          ? "border-red-400 text-red-300 hover:bg-red-950"
+                          : "text-red-600 hover:text-red-700"
+                      }
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteDocument(doc.id);
@@ -512,11 +668,17 @@ export function DocumentsPage() {
           </div>
         ) : (
           <div className="py-16 text-center">
-            <FileText className="size-14 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">등록된 문서가 없습니다.</p>
+            <FileText
+              className={cn(
+                "size-14 mx-auto mb-3",
+                isDark ? "text-zinc-600" : "text-gray-300"
+              )}
+            />
+            <p className={textMuted}>등록된 문서가 없습니다.</p>
           </div>
         )}
       </div>
+
       {totalPages > 1 && (
         <div className="mt-4 flex items-center justify-center gap-2">
           <Button
@@ -524,32 +686,38 @@ export function DocumentsPage() {
             size="sm"
             disabled={currentPage === 1}
             onClick={() => setCurrentPage((prev) => prev - 1)}
+            className={outlineButtonClass}
           >
             이전
           </Button>
 
-          {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-            <Button
-              key={page}
-              variant={currentPage === page ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCurrentPage(page)}
-              className={currentPage === page ? "bg-blue-600 hover:bg-blue-700" : ""}
-            >
-              {page}
-            </Button>
-          ))}
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+            (page) => (
+              <Button
+                key={page}
+                variant={currentPage === page ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCurrentPage(page)}
+                className={
+                  currentPage === page ? primaryButtonClass : outlineButtonClass
+                }
+              >
+                {page}
+              </Button>
+            )
+          )}
 
           <Button
             variant="outline"
             size="sm"
             disabled={currentPage === totalPages}
             onClick={() => setCurrentPage((prev) => prev + 1)}
+            className={outlineButtonClass}
           >
             다음
           </Button>
         </div>
-      )}    
+      )}
     </div>
   );
 }

@@ -22,10 +22,10 @@ import { useAppContext } from "../../store/AppProvider";
 import { cn } from "../../components/UI/utils";
 import { scheduleApi } from "../../api/scheduleApi";
 import { vacationApi } from "../../api/vacationApi";
-import { getNoticesApi } from "../../api/noticeApi";
 
 export function DashboardPage() {
   const {
+    notices = [],
     getVacationBalance,
     currentUser,
     employees = [],
@@ -35,23 +35,43 @@ export function DashboardPage() {
   const isDark = customSettings?.darkMode;
 
   const cardClass = isDark
-    ? "!bg-zinc-700 !border-zinc-600 !text-zinc-100"
-    : "";
-
-  const innerCardClass = isDark
-    ? "!bg-zinc-600 !border-zinc-500 !text-zinc-100"
+    ? "bg-[#35353d] border-[#5c5c73] text-white"
     : "bg-white border-gray-200";
 
-  const textMain = isDark ? "text-zinc-100" : "text-gray-900";
+  const innerCardClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white"
+    : "bg-white border-gray-200";
+
+  const pageClass = isDark
+    ? "bg-[#27272a] text-white"
+    : "bg-gray-50 text-gray-900";
+
+  const heroClass = isDark
+    ? "bg-[#5c5c73] text-white"
+    : "bg-gradient-to-r from-blue-600 to-blue-800 text-white";
+
+  const textMain = isDark ? "text-white" : "text-gray-900";
   const textSub = isDark ? "text-zinc-300" : "text-gray-600";
   const textMuted = isDark ? "text-zinc-400" : "text-gray-500";
-  const hoverClass = isDark ? "hover:!bg-zinc-500" : "hover:bg-gray-50";
+
+  const hoverClass = isDark ? "hover:bg-[#3f3f48]" : "hover:bg-gray-50";
+
+  const ghostButtonClass = isDark
+    ? "text-zinc-200 hover:bg-[#48484f] hover:text-white"
+    : "";
+
+  const outlineButtonClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white hover:bg-[#48484f]"
+    : "";
+
+  const calendarBoxClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white"
+    : "bg-white border-gray-200";
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [vacationRequests, setVacationRequests] = useState([]);
   const [apiUsers, setApiUsers] = useState([]);
-  const [apiNotices, setApiNotices] = useState([]);
 
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -76,12 +96,8 @@ export function DashboardPage() {
   const formatTime = (value) => {
     if (!value || typeof value !== "string") return "";
     if (!value.includes("T")) return "";
-    return value.split("T")[1]?.slice(0, 5) || "";
-  };
 
-  const unwrapResponse = (result) => {
-    if (Array.isArray(result)) return result;
-    return result?.data ?? result ?? [];
+    return value.split("T")[1]?.slice(0, 5) || "";
   };
 
   const toLocalDate = (dateStr) => {
@@ -220,31 +236,8 @@ export function DashboardPage() {
     };
 
     loadUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [API_BASE_URL]);
-
-  useEffect(() => {
-    const loadNotices = async () => {
-      try {
-        const data = unwrapResponse(await getNoticesApi());
-        const normalized = Array.isArray(data)
-          ? data.map((notice) => ({
-              id: notice.noticeId ?? notice.id,
-              title: notice.title ?? "",
-              author: notice.writerName ?? notice.author ?? "관리자",
-              date: formatDate(notice.createdAt ?? notice.date),
-              isPinned: Boolean(notice.isPinned),
-            }))
-          : [];
-
-        setApiNotices(normalized);
-      } catch (error) {
-        console.error("대시보드 공지 조회 실패:", error);
-        setApiNotices([]);
-      }
-    };
-
-    loadNotices();
-  }, []);
 
   useEffect(() => {
     const loadVacations = async () => {
@@ -263,6 +256,7 @@ export function DashboardPage() {
     };
 
     loadVacations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiUsers, employees]);
 
   const loginUser =
@@ -330,30 +324,29 @@ export function DashboardPage() {
     .sort((a, b) => toLocalDate(a.date) - toLocalDate(b.date))
     .slice(0, 5);
 
-  const recentNotices = apiNotices.slice(0, 5);
+  const recentNotices = notices.slice(0, 5);
 
-  const isAdmin =
-    loginUser.role === "ADMIN" || loginUser.role === "최고관리자";
-
+  const isAdmin = loginUser.role === "ADMIN" || loginUser.role === "최고관리자";
   const isTeamLeader = loginUser.role === "팀장";
   const isManager = isAdmin || isTeamLeader;
 
   const pendingVacations = isManager
-    ? vacationRequests.filter((req) => {
-        const isPending = req.status === "PENDING" || req.status === "대기";
+    ? vacationRequests.filter((request) => {
+        const isPending =
+          request.status === "PENDING" || request.status === "대기";
 
         if (!isPending) return false;
 
         if (isAdmin) return true;
 
-        const user = findUserByUserId(req.employeeId);
+        const user = findUserByUserId(request.employeeId);
 
         return user && user.department === loginUser.department;
       })
     : [];
 
-  const activeEmployees = (apiUsers.length > 0 ? apiUsers : employees).filter(
-    (emp) => emp.status !== "오프라인"
+  const activeEmployees = employees.filter(
+    (employee) => employee.status !== "오프라인"
   ).length;
 
   const personalDates = useMemo(() => {
@@ -415,11 +408,12 @@ export function DashboardPage() {
 
     return calendarEvents.filter((event) => event.date === dateStr);
   };
-  
+
   const selectedDateVacations = useMemo(() => {
     if (!selectedDate) return [];
 
     const currentUserId = loginUser?.userId || loginUser?.id;
+
     const dateStr = [
       selectedDate.getFullYear(),
       String(selectedDate.getMonth() + 1).padStart(2, "0"),
@@ -438,38 +432,82 @@ export function DashboardPage() {
   const selectedDateEvents = getSelectedDateEvents();
 
   const getEventTypeBadge = (type) => {
+    if (isDark) {
+      const configs = {
+        개인: "bg-purple-500/20 text-purple-300 border border-purple-400/30 hover:bg-purple-500/20",
+        팀: "bg-blue-500/20 text-blue-300 border border-blue-400/30 hover:bg-blue-500/20",
+        전사: "bg-green-500/20 text-green-300 border border-green-400/30 hover:bg-green-500/20",
+        공휴일: "bg-red-500/20 text-red-300 border border-red-400/30 hover:bg-red-500/20",
+        휴가: "bg-orange-500/20 text-orange-300 border border-orange-400/30 hover:bg-orange-500/20",
+      };
+
+      return (
+        <Badge className={configs[type] || configs["개인"]}>{type}</Badge>
+      );
+    }
+
     const configs = {
-      개인: { bg: "bg-purple-100", text: "text-purple-700" },
-      팀: { bg: "bg-blue-100", text: "text-blue-700" },
-      전사: { bg: "bg-green-100", text: "text-green-700" },
-      공휴일: { bg: "bg-red-100", text: "text-red-700" },
-      휴가: { bg: "bg-amber-100", text: "text-amber-700" },
+      개인: "bg-purple-100 text-purple-700 hover:bg-purple-100",
+      팀: "bg-blue-100 text-blue-700 hover:bg-blue-100",
+      전사: "bg-green-100 text-green-700 hover:bg-green-100",
+      공휴일: "bg-red-100 text-red-700 hover:bg-red-100",
+      휴가: "bg-amber-100 text-amber-700 hover:bg-amber-100",
     };
 
-    const config = configs[type] || configs["개인"];
-
     return (
-      <Badge className={`${config.bg} ${config.text} hover:${config.bg}`}>
-        {type}
-      </Badge>
+      <Badge className={configs[type] || configs["개인"]}>{type}</Badge>
     );
   };
 
+  const iconBoxClass = (type) => {
+    if (isDark) {
+      return "size-12 bg-[#2f2f36] border border-[#5c5c73] rounded-lg flex items-center justify-center";
+    }
+
+    const map = {
+      blue: "size-12 bg-blue-100 rounded-lg flex items-center justify-center",
+      green: "size-12 bg-green-100 rounded-lg flex items-center justify-center",
+      orange:
+        "size-12 bg-orange-100 rounded-lg flex items-center justify-center",
+      purple:
+        "size-12 bg-purple-100 rounded-lg flex items-center justify-center",
+    };
+
+    return map[type];
+  };
+
+  const iconColorClass = (type) => {
+    if (isDark) return "text-[#d8d8e3]";
+
+    const map = {
+      blue: "text-blue-600",
+      green: "text-green-600",
+      orange: "text-orange-600",
+      purple: "text-purple-600",
+    };
+
+    return map[type];
+  };
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-8 text-white">
+    <div className={cn("p-6 max-w-7xl mx-auto space-y-6", pageClass)}>
+      <div className={cn("rounded-2xl p-8", heroClass)}>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2">
               안녕하세요, {loginUser.name || loginUser.userName}님! 👋
             </h1>
-            <p className="text-blue-100 text-lg">
+
+            <p className={cn("text-lg", isDark ? "text-zinc-200" : "text-blue-100")}>
               {formattedDate} ({dayOfWeek}요일)
             </p>
           </div>
 
           <div className="text-right">
-            <div className="text-sm text-blue-100 mb-1">오늘의 일정</div>
+            <div className={cn("text-sm mb-1", isDark ? "text-zinc-200" : "text-blue-100")}>
+              오늘의 일정
+            </div>
+
             <div className="text-4xl font-bold">{todayEvents.length}</div>
           </div>
         </div>
@@ -481,16 +519,18 @@ export function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className={cn("text-sm font-medium", textSub)}>잔여 휴가</p>
+
                 <p className={cn("text-2xl font-bold mt-2", textMain)}>
                   {vacationBalance.remaining}일
                 </p>
+
                 <p className={cn("text-xs mt-1", textMuted)}>
                   총 {vacationBalance.total}일 중 {vacationBalance.used}일 사용
                 </p>
               </div>
 
-              <div className="size-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Calendar className="size-6 text-blue-600" />
+              <div className={iconBoxClass("blue")}>
+                <Calendar className={cn("size-6", iconColorClass("blue"))} />
               </div>
             </div>
           </CardContent>
@@ -501,14 +541,16 @@ export function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className={cn("text-sm font-medium", textSub)}>오늘 일정</p>
+
                 <p className={cn("text-2xl font-bold mt-2", textMain)}>
                   {todayEvents.length}개
                 </p>
+
                 <p className={cn("text-xs mt-1", textMuted)}>예정된 일정</p>
               </div>
 
-              <div className="size-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Clock className="size-6 text-green-600" />
+              <div className={iconBoxClass("green")}>
+                <Clock className={cn("size-6", iconColorClass("green"))} />
               </div>
             </div>
           </CardContent>
@@ -521,16 +563,18 @@ export function DashboardPage() {
                 <p className={cn("text-sm font-medium", textSub)}>
                   미확인 공지
                 </p>
+
                 <p className={cn("text-2xl font-bold mt-2", textMain)}>
                   {recentNotices.length}개
                 </p>
+
                 <p className={cn("text-xs mt-1", textMuted)}>
                   새로운 공지사항
                 </p>
               </div>
 
-              <div className="size-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Bell className="size-6 text-orange-600" />
+              <div className={iconBoxClass("orange")}>
+                <Bell className={cn("size-6", iconColorClass("orange"))} />
               </div>
             </div>
           </CardContent>
@@ -543,16 +587,18 @@ export function DashboardPage() {
                 <p className={cn("text-sm font-medium", textSub)}>
                   활동 중인 직원
                 </p>
+
                 <p className={cn("text-2xl font-bold mt-2", textMain)}>
                   {activeEmployees}명
                 </p>
+
                 <p className={cn("text-xs mt-1", textMuted)}>
                   전체 {employees.length}명
                 </p>
               </div>
 
-              <div className="size-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Users className="size-6 text-purple-600" />
+              <div className={iconBoxClass("purple")}>
+                <Users className={cn("size-6", iconColorClass("purple"))} />
               </div>
             </div>
           </CardContent>
@@ -560,9 +606,19 @@ export function DashboardPage() {
       </div>
 
       {isManager && pendingVacations.length > 0 && (
-        <Card className={cn("border-l-4 border-l-orange-500", cardClass)}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-orange-400">
+        <Card
+          className={cn(
+            "border-l-4 border-l-orange-500",
+            cardClass
+          )}
+        >
+          <CardHeader className={isDark ? "border-b border-[#5c5c73]" : ""}>
+            <CardTitle
+              className={cn(
+                "flex items-center gap-2",
+                isDark ? "text-orange-300" : "text-orange-600"
+              )}
+            >
               <Bell className="size-5" />
               승인 대기 중인 휴가 신청 ({pendingVacations.length}건)
             </CardTitle>
@@ -574,14 +630,17 @@ export function DashboardPage() {
                 <div
                   key={vacation.id}
                   className={cn(
-                    "flex items-center justify-between p-3 rounded-lg",
-                    isDark ? "bg-zinc-600" : "bg-orange-50"
+                    "flex items-center justify-between p-3 rounded-lg border",
+                    isDark
+                      ? "bg-[#2f2f36] border-[#5c5c73]"
+                      : "bg-orange-50 border-orange-100"
                   )}
                 >
                   <div>
                     <div className={cn("font-medium", textMain)}>
                       {vacation.employeeName}
                     </div>
+
                     <div className={cn("text-sm", textSub)}>
                       {vacation.startDate} ~ {vacation.endDate} (
                       {vacation.days}일)
@@ -589,7 +648,11 @@ export function DashboardPage() {
                   </div>
 
                   <Link to="/vacation/list">
-                    <Button size="sm" variant="outline">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={outlineButtonClass}
+                    >
                       확인하기
                     </Button>
                   </Link>
@@ -602,7 +665,7 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className={cn("lg:col-span-2 lg:row-span-2", cardClass)}>
-          <CardHeader>
+          <CardHeader className={isDark ? "border-b border-[#5c5c73]" : ""}>
             <div className="flex items-center justify-between">
               <CardTitle className={cn("flex items-center gap-2", textMain)}>
                 <Calendar className="size-5" />
@@ -614,7 +677,11 @@ export function DashboardPage() {
               </CardTitle>
 
               <Link to="/calendar">
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={ghostButtonClass}
+                >
                   전체 보기
                 </Button>
               </Link>
@@ -630,10 +697,7 @@ export function DashboardPage() {
                   onSelect={(selected) => {
                     if (selected) setSelectedDate(selected);
                   }}
-                  className={cn(
-                    "rounded-md border text-base",
-                    isDark ? "bg-zinc-700 border-zinc-500 text-zinc-100" : ""
-                  )}
+                  className={cn("rounded-md border text-base", calendarBoxClass)}
                   classNames={{
                     months:
                       "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
@@ -641,8 +705,10 @@ export function DashboardPage() {
                     caption: "flex justify-center pt-1 relative items-center",
                     caption_label: "text-lg font-medium",
                     nav: "space-x-1 flex items-center",
-                    nav_button:
-                      "h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100",
+                    nav_button: cn(
+                      "h-8 w-8 bg-transparent p-0 opacity-70 hover:opacity-100",
+                      isDark ? "hover:bg-[#48484f]" : ""
+                    ),
                     table: "w-full border-collapse space-y-1",
                     head_row: "flex",
                     head_cell: cn(
@@ -651,7 +717,10 @@ export function DashboardPage() {
                     ),
                     row: "flex w-full mt-2",
                     cell: "h-10 w-10 text-center text-sm p-0 relative",
-                    day: "h-10 w-10 p-0 font-normal",
+                    day: cn(
+                      "h-10 w-10 p-0 font-normal rounded-md",
+                      isDark ? "hover:bg-[#48484f]" : ""
+                    ),
                   }}
                   personalDates={personalDates}
                   teamDates={teamDates}
@@ -668,70 +737,75 @@ export function DashboardPage() {
                     : "날짜를 선택하세요"}
                 </h3>
 
-                {selectedDateEvents.length > 0 || selectedDateVacations.length > 0 ? (
+                {selectedDateEvents.length > 0 ||
+                selectedDateVacations.length > 0 ? (
                   <div className="space-y-2">
-				  {selectedDateEvents.length > 0 || selectedDateVacations.length > 0 ? (
-				    <div className="space-y-2">
-				      {selectedDateEvents.map((event) => (
-				        <div
-				          key={event.id}
-				          className={cn("p-3 border rounded-lg", innerCardClass)}
-				        >
-				          <div className="flex items-start justify-between gap-2 mb-1">
-				            <span className={cn("text-sm font-medium", textMain)}>
-				              {event.title}
-				            </span>
-				            {getEventTypeBadge(event.type)}
-				          </div>
+                    {selectedDateEvents.map((event) => (
+                      <div
+                        key={event.id}
+                        className={cn(
+                          "p-3 border rounded-lg",
+                          innerCardClass
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <span className={cn("text-sm font-medium", textMain)}>
+                            {event.title}
+                          </span>
 
-				          {event.startTime && event.endTime && (
-				            <div className={cn("text-xs", textSub)}>
-				              {event.startTime} - {event.endTime}
-				            </div>
-				          )}
+                          {getEventTypeBadge(event.type)}
+                        </div>
 
-				          {event.description && (
-				            <div className={cn("text-xs mt-1", textSub)}>
-				              {event.description}
-				            </div>
-				          )}
-				        </div>
-				      ))}
+                        {event.startTime && event.endTime && (
+                          <div className={cn("text-xs", textSub)}>
+                            {event.startTime} - {event.endTime}
+                          </div>
+                        )}
 
-				      {selectedDateVacations.map((vacation) => (
-				        <div
-				          key={`vacation-${vacation.id}`}
-				          className={cn("p-3 border rounded-lg", innerCardClass)}
-				        >
-				          <div className="flex items-start justify-between gap-2 mb-1">
-				            <span className={cn("text-sm font-medium", textMain)}>
-				              {vacation.employeeName} 휴가
-				            </span>
-				            {getEventTypeBadge("휴가")}
-				          </div>
+                        {event.description && (
+                          <div className={cn("text-xs mt-1", textSub)}>
+                            {event.description}
+                          </div>
+                        )}
+                      </div>
+                    ))}
 
-				          <div className={cn("text-xs", textSub)}>
-				            {vacation.startDate} ~ {vacation.endDate}
-				          </div>
+                    {selectedDateVacations.map((vacation) => (
+                      <div
+                        key={`vacation-${vacation.id}`}
+                        className={cn(
+                          "p-3 border rounded-lg",
+                          innerCardClass
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <span className={cn("text-sm font-medium", textMain)}>
+                            {vacation.employeeName} 휴가
+                          </span>
 
-				          {vacation.reason && (
-				            <div className={cn("text-xs mt-1", textSub)}>
-				              {vacation.reason}
-				            </div>
-				          )}
-				        </div>
-				      ))}
-				    </div>
-				  ) : (
-				    <div className={cn("text-center py-8", textMuted)}>
-				      <Calendar className="size-8 mx-auto mb-2 text-gray-400" />
-				      <p className="text-sm">일정이 없습니다</p>
-				    </div>
-				  )}
+                          {getEventTypeBadge("휴가")}
+                        </div>
+
+                        <div className={cn("text-xs", textSub)}>
+                          {vacation.startDate} ~ {vacation.endDate}
+                        </div>
+
+                        {vacation.reason && (
+                          <div className={cn("text-xs mt-1", textSub)}>
+                            {vacation.reason}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className={cn("text-center py-8", textMuted)}>
-                    <Calendar className="size-8 mx-auto mb-2 text-gray-400" />
+                    <Calendar
+                      className={cn(
+                        "size-8 mx-auto mb-2",
+                        isDark ? "text-zinc-600" : "text-gray-400"
+                      )}
+                    />
                     <p className="text-sm">일정이 없습니다</p>
                   </div>
                 )}
@@ -741,7 +815,7 @@ export function DashboardPage() {
         </Card>
 
         <Card className={cardClass}>
-          <CardHeader>
+          <CardHeader className={isDark ? "border-b border-[#5c5c73]" : ""}>
             <div className="flex items-center justify-between">
               <CardTitle className={cn("flex items-center gap-2", textMain)}>
                 <FileText className="size-5" />
@@ -749,7 +823,11 @@ export function DashboardPage() {
               </CardTitle>
 
               <Link to="/notice">
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={ghostButtonClass}
+                >
                   더보기
                 </Button>
               </Link>
@@ -793,12 +871,18 @@ export function DashboardPage() {
                   </div>
                 </Link>
               ))}
+
+              {recentNotices.length === 0 && (
+                <div className={cn("text-center py-8", textMuted)}>
+                  표시할 공지사항이 없습니다.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
         <Card className={cardClass}>
-          <CardHeader>
+          <CardHeader className={isDark ? "border-b border-[#5c5c73]" : ""}>
             <div className="flex items-center justify-between">
               <CardTitle className={cn("flex items-center gap-2", textMain)}>
                 <Clock className="size-5" />
@@ -842,7 +926,13 @@ export function DashboardPage() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <Clock className="size-8 text-gray-300 mx-auto mb-2" />
+                <Clock
+                  className={cn(
+                    "size-8 mx-auto mb-2",
+                    isDark ? "text-zinc-600" : "text-gray-300"
+                  )}
+                />
+
                 <p className={cn("text-sm", textMuted)}>
                   오늘 예정된 일정이 없습니다
                 </p>
@@ -853,7 +943,7 @@ export function DashboardPage() {
       </div>
 
       <Card className={cardClass}>
-        <CardHeader>
+        <CardHeader className={isDark ? "border-b border-[#5c5c73]" : ""}>
           <CardTitle className={cn("flex items-center gap-2", textMain)}>
             <TrendingUp className="size-5" />
             다가오는 일정 (7일 이내)

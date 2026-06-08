@@ -84,3 +84,6 @@ backend/src/main/resources/*-secret.yaml
 backend/src/main/resources/*-secret.yml
 backend/src/main/resources/*-prod.yaml
 backend/src/main/resources/*-prod.yml
+
+# yaml
+src/main/resources/application.yaml
