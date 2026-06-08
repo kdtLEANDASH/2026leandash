@@ -247,13 +247,17 @@ export function MainLayout() {
       roles: ["최고관리자", "팀장", "일반직원"],
       public: true,
     },
-    {
+
+  	{
       path: "/vacation",
-      label: isHrAdmin ? "휴가 신청현황" : "휴가 신청",
+      label: canApproveVacation
+        ? "휴가 관리"
+        : "휴가 신청",
       icon: Plane,
-      roles: ["최고관리자", "팀장", "일반직원"],
+      roles: ["최고관리자", "팀장", "일반직원", "ADMIN"],
       public: true,
     },
+
     {
       path: "/calendar",
       label: "캘린더",

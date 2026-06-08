@@ -15,3 +15,7 @@ spring:
 
 jwt:
   secret: Y2xvc2V0ZXItcHJvamVjdC1zZWNyZXQta2V5LWxlYW5kYXNoLWJhY2tlbmQtdGVzdC1rZXk=
+
+holiday:
+  api:
+    service-key: test

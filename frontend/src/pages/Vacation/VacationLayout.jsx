@@ -399,260 +399,272 @@ export default function VacationLayout() {
     ? getVacationBalance(getCurrentUserId())
     : { total: 15, used: 0, remaining: 15 };
 
-  const recommendedVacations = useMemo(() => {
-    if (!currentUser) return [];
+	const recommendedVacations = useMemo(() => {
+	  if (!currentUser) return [];
 
-    const todayDate = new Date();
+	  const MAX_TEAM_VACATION_COUNT = 2;
+	  const todayDate = new Date();
 
-    const holidayBridgeRecommendations = [];
-    const weekendLinkRecommendations = [];
-    const lowLoadRecommendations = [];
-    const balanceRecommendations = [];
+	  const holidayBridgeRecommendations = [];
+	  const weekendLinkRecommendations = [];
+	  const lowLoadRecommendations = [];
+	  const balanceRecommendations = [];
 
-    const hasCompanyEvent = (dateStr) => {
-      return calendarEvents.some(
-        (event) => event.date === dateStr && event.type !== "공휴일"
-      );
-    };
+	  const hasCompanyEvent = (dateStr) => {
+	    return calendarEvents.some(
+	      (event) => event.date === dateStr && event.type !== "공휴일"
+	    );
+	  };
 
-    const hasHoliday = (dateStr) => {
-      return calendarEvents.some(
-        (event) => event.date === dateStr && event.type === "공휴일"
-      );
-    };
+	  const hasHoliday = (dateStr) => {
+	    return calendarEvents.some(
+	      (event) => event.date === dateStr && event.type === "공휴일"
+	    );
+	  };
 
-    const isWeekdayHoliday = (date) => {
-      const dateStr = formatDate(date);
-      return hasHoliday(dateStr) && !isWeekend(date);
-    };
+	  const isWeekdayHoliday = (date) => {
+	    const dateStr = formatDate(date);
+	    return hasHoliday(dateStr) && !isWeekend(date);
+	  };
 
-    const isRestDay = (date) => {
-      const dateStr = formatDate(date);
-      return isWeekend(date) || hasHoliday(dateStr);
-    };
+	  const isRestDay = (date) => {
+	    const dateStr = formatDate(date);
+	    return isWeekend(date) || hasHoliday(dateStr);
+	  };
 
-    const calculateRestPeriod = (startDate, endDate) => {
-      let realStart = new Date(startDate);
-      let realEnd = new Date(endDate);
+	  const calculateRestPeriod = (startDate, endDate) => {
+	    let realStart = new Date(startDate);
+	    let realEnd = new Date(endDate);
 
-      while (isRestDay(addDays(realStart, -1))) {
-        realStart = addDays(realStart, -1);
-      }
+	    while (isRestDay(addDays(realStart, -1))) {
+	      realStart = addDays(realStart, -1);
+	    }
 
-      while (isRestDay(addDays(realEnd, 1))) {
-        realEnd = addDays(realEnd, 1);
-      }
+	    while (isRestDay(addDays(realEnd, 1))) {
+	      realEnd = addDays(realEnd, 1);
+	    }
 
-      return {
-        restStartDate: formatDate(realStart),
-        restEndDate: formatDate(realEnd),
-        totalRestDays: calculateDays(formatDate(realStart), formatDate(realEnd)),
-      };
-    };
+	    return {
+	      restStartDate: formatDate(realStart),
+	      restEndDate: formatDate(realEnd),
+	      totalRestDays: calculateDays(formatDate(realStart), formatDate(realEnd)),
+	    };
+	  };
 
-    const getTeamVacationCount = (dateStr) => {
-      return sourceVacationRequests.filter((vacation) => {
-        const employee = findEmployeeByUserId(vacation.employeeId);
+	  const getTeamVacationCount = (dateStr) => {
+	    return sourceVacationRequests.filter((vacation) => {
+	      const employee = findEmployeeByUserId(vacation.employeeId);
 
-        return (
-          vacation.status === "승인" &&
-          employee?.department === currentUser.department &&
-          vacation.startDate <= dateStr &&
-          vacation.endDate >= dateStr
-        );
-      }).length;
-    };
+	      return (
+	        vacation.status === "승인" &&
+	        employee?.department === currentUser.department &&
+	        vacation.startDate <= dateStr &&
+	        vacation.endDate >= dateStr
+	      );
+	    }).length;
+	  };
 
-    for (let i = 1; i <= recommendationSearchDays; i++) {
-      const targetDate = addDays(todayDate, i);
-      const dateStr = formatDate(targetDate);
+	  for (let i = 1; i <= recommendationSearchDays; i++) {
+	    const targetDate = addDays(todayDate, i);
+	    const dateStr = formatDate(targetDate);
 
-      if (isWeekend(targetDate)) continue;
-      if (hasCompanyEvent(dateStr)) continue;
+	    if (isWeekend(targetDate)) continue;
+	    if (hasCompanyEvent(dateStr)) continue;
 
-      const prevDate = addDays(targetDate, -1);
-      const nextDate = addDays(targetDate, 1);
-      const prev2Date = addDays(targetDate, -2);
-      const next2Date = addDays(targetDate, 2);
+	    const teamVacationCount = getTeamVacationCount(dateStr);
 
-      const prevIsWeekend = isWeekend(prevDate);
-      const nextIsWeekend = isWeekend(nextDate);
+	    if (teamVacationCount > MAX_TEAM_VACATION_COUNT) continue;
 
-      const hasNearWeekdayHoliday =
-        isWeekdayHoliday(prevDate) ||
-        isWeekdayHoliday(nextDate) ||
-        isWeekdayHoliday(prev2Date) ||
-        isWeekdayHoliday(next2Date);
+	    const prevDate = addDays(targetDate, -1);
+	    const nextDate = addDays(targetDate, 1);
+	    const prev2Date = addDays(targetDate, -2);
+	    const next2Date = addDays(targetDate, 2);
 
-      const teamVacationCount = getTeamVacationCount(dateStr);
+	    const prevIsWeekend = isWeekend(prevDate);
+	    const nextIsWeekend = isWeekend(nextDate);
 
-      if (hasNearWeekdayHoliday) {
-        const restInfo = calculateRestPeriod(targetDate, targetDate);
+	    const hasNearWeekdayHoliday =
+	      isWeekdayHoliday(prevDate) ||
+	      isWeekdayHoliday(nextDate) ||
+	      isWeekdayHoliday(prev2Date) ||
+	      isWeekdayHoliday(next2Date);
 
-        holidayBridgeRecommendations.push({
-          id: `holiday-bridge-${dateStr}`,
-          category: "공휴일 징검다리",
-          title: "공휴일 징검다리 휴가",
-          startDate: dateStr,
-          endDate: dateStr,
-          days: 1,
-          type: "연차",
-          reason: "평일 공휴일과 연결되는 징검다리 휴가입니다.",
-          description: `평일 공휴일과 연결되어 ${restInfo.totalRestDays}일 연속 휴식이 가능한 날짜입니다.`,
-          teamVacationCount,
-          totalRestDays: restInfo.totalRestDays,
-          restStartDate: restInfo.restStartDate,
-          restEndDate: restInfo.restEndDate,
-          reasons: [
-            "평일 공휴일 인접",
-            "회사 일정 없음",
-            `팀 휴가자 ${teamVacationCount}명`,
-            `예상 연휴 ${restInfo.totalRestDays}일`,
-          ],
-          score: restInfo.totalRestDays + (teamVacationCount === 0 ? 2 : 0),
-        });
-      }
+	    if (hasNearWeekdayHoliday) {
+	      const restInfo = calculateRestPeriod(targetDate, targetDate);
 
-      if (!hasNearWeekdayHoliday && (prevIsWeekend || nextIsWeekend)) {
-        const restInfo = calculateRestPeriod(targetDate, targetDate);
+	      holidayBridgeRecommendations.push({
+	        id: `holiday-bridge-${dateStr}`,
+	        category: "공휴일 징검다리",
+	        title: "공휴일 징검다리 휴가",
+	        startDate: dateStr,
+	        endDate: dateStr,
+	        days: 1,
+	        type: "연차",
+	        reason: "평일 공휴일과 연결되는 징검다리 휴가입니다.",
+	        description: `평일 공휴일과 연결되어 ${restInfo.totalRestDays}일 연속 휴식이 가능한 날짜입니다.`,
+	        teamVacationCount,
+	        totalRestDays: restInfo.totalRestDays,
+	        restStartDate: restInfo.restStartDate,
+	        restEndDate: restInfo.restEndDate,
+	        reasons: [
+	          "평일 공휴일 인접",
+	          "회사 일정 없음",
+	          `팀 휴가자 ${teamVacationCount}명`,
+	          `예상 연휴 ${restInfo.totalRestDays}일`,
+	        ],
+	        score:
+	          restInfo.totalRestDays +
+	          (MAX_TEAM_VACATION_COUNT - teamVacationCount),
+	      });
+	    }
 
-        weekendLinkRecommendations.push({
-          id: `weekend-link-${dateStr}`,
-          category: "주말 연장",
-          title: "주말 연장 휴가",
-          startDate: dateStr,
-          endDate: dateStr,
-          days: 1,
-          type: "연차",
-          reason: "주말과 이어붙여 사용하는 휴가입니다.",
-          description: `주말과 연결하여 ${restInfo.totalRestDays}일 연속 휴식이 가능합니다.`,
-          teamVacationCount,
-          totalRestDays: restInfo.totalRestDays,
-          restStartDate: restInfo.restStartDate,
-          restEndDate: restInfo.restEndDate,
-          reasons: [
-            "주말과 연결",
-            "회사 일정 없음",
-            `팀 휴가자 ${teamVacationCount}명`,
-            `예상 연휴 ${restInfo.totalRestDays}일`,
-          ],
-          score: restInfo.totalRestDays + (teamVacationCount === 0 ? 2 : 0),
-        });
-      }
+	    if (!hasNearWeekdayHoliday && (prevIsWeekend || nextIsWeekend)) {
+	      const restInfo = calculateRestPeriod(targetDate, targetDate);
 
-      if (teamVacationCount === 0) {
-        lowLoadRecommendations.push({
-          id: `lowload-${dateStr}`,
-          category: "승인 가능성",
-          title: "승인 가능성 높은 휴가",
-          startDate: dateStr,
-          endDate: dateStr,
-          days: 1,
-          type: "연차",
-          reason: "팀 휴가자가 적어 업무 공백 부담이 적은 날짜입니다.",
-          description: "같은 부서 휴가자가 없어 승인 가능성이 높은 날짜입니다.",
-          teamVacationCount,
-          totalRestDays: 1,
-          restStartDate: dateStr,
-          restEndDate: dateStr,
-          reasons: ["팀 휴가자 없음", "회사 일정 없음", "업무 공백 부담 낮음"],
-          score: 2,
-        });
-      }
+	      weekendLinkRecommendations.push({
+	        id: `weekend-link-${dateStr}`,
+	        category: "주말 연장",
+	        title: "주말 연장 휴가",
+	        startDate: dateStr,
+	        endDate: dateStr,
+	        days: 1,
+	        type: "연차",
+	        reason: "주말과 이어붙여 사용하는 휴가입니다.",
+	        description: `주말과 연결하여 ${restInfo.totalRestDays}일 연속 휴식이 가능합니다.`,
+	        teamVacationCount,
+	        totalRestDays: restInfo.totalRestDays,
+	        restStartDate: restInfo.restStartDate,
+	        restEndDate: restInfo.restEndDate,
+	        reasons: [
+	          "주말과 연결",
+	          "회사 일정 없음",
+	          `팀 휴가자 ${teamVacationCount}명`,
+	          `예상 연휴 ${restInfo.totalRestDays}일`,
+	        ],
+	        score:
+	          restInfo.totalRestDays +
+	          (MAX_TEAM_VACATION_COUNT - teamVacationCount),
+	      });
+	    }
 
-      if (vacationBalance.remaining >= 10) {
-        const endDate = addDays(targetDate, 1);
-        const endDateStr = formatDate(endDate);
+	    if (teamVacationCount === 0) {
+	      lowLoadRecommendations.push({
+	        id: `lowload-${dateStr}`,
+	        category: "승인 가능성",
+	        title: "승인 가능성 높은 휴가",
+	        startDate: dateStr,
+	        endDate: dateStr,
+	        days: 1,
+	        type: "연차",
+	        reason: "팀 휴가자가 없어 업무 공백 부담이 낮은 날짜입니다.",
+	        description: "같은 부서 휴가자가 없어 승인 가능성이 높은 날짜입니다.",
+	        teamVacationCount,
+	        totalRestDays: 1,
+	        restStartDate: dateStr,
+	        restEndDate: dateStr,
+	        reasons: ["팀 휴가자 없음", "회사 일정 없음", "업무 공백 부담 낮음"],
+	        score: 3,
+	      });
+	    }
 
-        if (
-          !isWeekend(endDate) &&
-          !hasCompanyEvent(endDateStr) &&
-          getTeamVacationCount(endDateStr) <= 1
-        ) {
-          const restInfo = calculateRestPeriod(targetDate, endDate);
+	    if (vacationBalance.remaining >= 10) {
+	      const endDate = addDays(targetDate, 1);
+	      const endDateStr = formatDate(endDate);
+	      const endDateTeamVacationCount = getTeamVacationCount(endDateStr);
 
-          balanceRecommendations.push({
-            id: `balance-${dateStr}`,
-            category: "잔여 연차 활용",
-            title: "잔여 연차 활용 추천",
-            startDate: dateStr,
-            endDate: endDateStr,
-            days: 2,
-            type: "연차",
-            reason: "잔여 연차가 충분하여 2일 연속 휴가 사용을 추천합니다.",
-            description: `남은 연차를 활용해 ${restInfo.totalRestDays}일 연속 휴식을 만들 수 있습니다.`,
-            teamVacationCount,
-            totalRestDays: restInfo.totalRestDays,
-            restStartDate: restInfo.restStartDate,
-            restEndDate: restInfo.restEndDate,
-            reasons: [
-              `잔여 연차 ${vacationBalance.remaining}일`,
-              "2일 연속 사용 가능",
-              "회사 일정 없음",
-              `예상 연휴 ${restInfo.totalRestDays}일`,
-            ],
-            score: restInfo.totalRestDays,
-          });
-        }
-      }
-    }
+	      if (
+	        !isWeekend(endDate) &&
+	        !hasCompanyEvent(endDateStr) &&
+	        endDateTeamVacationCount <= MAX_TEAM_VACATION_COUNT
+	      ) {
+	        const restInfo = calculateRestPeriod(targetDate, endDate);
 
-    const sortByBest = (list) => {
-      return [...list].sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        return a.startDate.localeCompare(b.startDate);
-      });
-    };
+	        balanceRecommendations.push({
+	          id: `balance-${dateStr}`,
+	          category: "잔여 연차 활용",
+	          title: "잔여 연차 활용 추천",
+	          startDate: dateStr,
+	          endDate: endDateStr,
+	          days: 2,
+	          type: "연차",
+	          reason: "잔여 연차가 충분하여 2일 연속 휴가 사용을 추천합니다.",
+	          description: `남은 연차를 활용해 ${restInfo.totalRestDays}일 연속 휴식을 만들 수 있습니다.`,
+	          teamVacationCount: Math.max(teamVacationCount, endDateTeamVacationCount),
+	          totalRestDays: restInfo.totalRestDays,
+	          restStartDate: restInfo.restStartDate,
+	          restEndDate: restInfo.restEndDate,
+	          reasons: [
+	            `잔여 연차 ${vacationBalance.remaining}일`,
+	            "2일 연속 사용 가능",
+	            "회사 일정 없음",
+	            `팀 휴가자 최대 ${Math.max(teamVacationCount, endDateTeamVacationCount)}명`,
+	            `예상 연휴 ${restInfo.totalRestDays}일`,
+	          ],
+	          score:
+	            restInfo.totalRestDays +
+	            (MAX_TEAM_VACATION_COUNT -
+	              Math.max(teamVacationCount, endDateTeamVacationCount)),
+	        });
+	      }
+	    }
+	  }
 
-    const usedDates = new Set();
+	  const sortByBest = (list) => {
+	    return [...list].sort((a, b) => {
+	      if (b.score !== a.score) return b.score - a.score;
+	      return a.startDate.localeCompare(b.startDate);
+	    });
+	  };
 
-    const pickMultipleUnique = (list, limit) => {
-      const result = [];
+	  const usedDates = new Set();
 
-      sortByBest(list).forEach((recommendation) => {
-        if (result.length >= limit) return;
-        if (usedDates.has(recommendation.startDate)) return;
+	  const pickMultipleUnique = (list, limit) => {
+	    const result = [];
 
-        usedDates.add(recommendation.startDate);
-        result.push(recommendation);
-      });
+	    sortByBest(list).forEach((recommendation) => {
+	      if (result.length >= limit) return;
+	      if (usedDates.has(recommendation.startDate)) return;
 
-      return result;
-    };
+	      usedDates.add(recommendation.startDate);
+	      result.push(recommendation);
+	    });
 
-    const baseRecommendations = [
-      ...pickMultipleUnique(holidayBridgeRecommendations, 2),
-      ...pickMultipleUnique(weekendLinkRecommendations, 2),
-      ...pickMultipleUnique(lowLoadRecommendations, 2),
-      ...pickMultipleUnique(balanceRecommendations, 2),
-    ].filter(Boolean);
+	    return result;
+	  };
 
-    return baseRecommendations.filter((recommendation) => {
-      const matchesType =
-        recommendationTypeFilter === "전체"
-          ? true
-          : recommendation.category === recommendationTypeFilter;
+	  const baseRecommendations = [
+	    ...pickMultipleUnique(holidayBridgeRecommendations, 2),
+	    ...pickMultipleUnique(weekendLinkRecommendations, 2),
+	    ...pickMultipleUnique(lowLoadRecommendations, 2),
+	    ...pickMultipleUnique(balanceRecommendations, 2),
+	  ].filter(Boolean);
 
-      const matchesDays =
-        recommendationDaysFilter === "전체"
-          ? true
-          : recommendationDaysFilter === "1"
-          ? recommendation.days === 1
-          : recommendation.days >= 2;
+	  return baseRecommendations.filter((recommendation) => {
+	    const matchesType =
+	      recommendationTypeFilter === "전체"
+	        ? true
+	        : recommendation.category === recommendationTypeFilter;
 
-      return matchesType && matchesDays;
-    });
-  }, [
-    currentUser,
-    calendarEvents,
-    sourceVacationRequests,
-    employees,
-    vacationBalance.remaining,
-    recommendationSearchDays,
-    recommendationTypeFilter,
-    recommendationDaysFilter,
-    findEmployeeByUserId,
-  ]);
+	    const matchesDays =
+	      recommendationDaysFilter === "전체"
+	        ? true
+	        : recommendationDaysFilter === "1"
+	          ? recommendation.days === 1
+	          : recommendation.days >= 2;
+
+	    return matchesType && matchesDays;
+	  });
+	}, [
+	  currentUser,
+	  calendarEvents,
+	  sourceVacationRequests,
+	  employees,
+	  vacationBalance.remaining,
+	  recommendationSearchDays,
+	  recommendationTypeFilter,
+	  recommendationDaysFilter,
+	  findEmployeeByUserId,
+	]);
 
   useEffect(() => {
     if (recommendedVacations.length > 0) {
