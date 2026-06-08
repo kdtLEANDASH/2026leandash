@@ -1,4 +1,4 @@
-import apiRequest from "./client";
+﻿import apiRequest from "./client";
 
 export function getNoticesApi(keyword = "") {
   const query = keyword?.trim()
