@@ -6,36 +6,30 @@ import {
   MessageSquare,
   Search,
   PencilLine,
-  Plus,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/UI/card";
 import { Button } from "@/components/UI/button";
 import { Input } from "@/components/UI/input";
 import { Badge } from "@/components/UI/badge";
 import { cn } from "@/components/UI/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/UI/dialog";
-import { Label } from "@/components/UI/label";
-import { Textarea } from "@/components/UI/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/UI/select";
 import { useAppContext } from "@/store/AppProvider";
 
-const STORAGE_KEY = "community_posts";
+export const STORAGE_KEY = "community_posts";
 
-const defaultPosts = [
+export const boardList = [
+  "전체",
+  "개발팀",
+  "마케팅팀",
+  "인사팀",
+  "경영지원팀",
+  "디자인팀",
+  "영업팀",
+];
+
+export const defaultPosts = [
   {
     id: 1,
+    board: "전체",
     type: "공지",
     category: "공지",
     title: "사내 커뮤니티 이용 안내",
@@ -49,7 +43,8 @@ const defaultPosts = [
   },
   {
     id: 2,
-    type: "인기",
+    board: "개발팀",
+    type: "일반",
     category: "사진/영상",
     title: "점심시간 풍경 사진 올려봐요",
     author: "김민수",
@@ -61,6 +56,7 @@ const defaultPosts = [
   },
   {
     id: 3,
+    board: "개발팀",
     type: "일반",
     category: "잡담",
     title: "일하기 싫다",
@@ -71,29 +67,85 @@ const defaultPosts = [
     likes: 0,
     content: "다들 오늘 컨디션 어떤가요?",
   },
+  {
+    id: 4,
+    board: "인사팀",
+    type: "일반",
+    category: "정보",
+    title: "인사팀 게시판 테스트 글",
+    author: "박철수",
+    date: "04.17",
+    views: 10,
+    comments: 0,
+    likes: 0,
+    content: "이 글은 인사팀 게시판에서만 보입니다.",
+  },
 ];
 
 export function CommunityPage() {
   const navigate = useNavigate();
-  const { currentUser } = useAppContext();
+  const { currentUser, customSettings } = useAppContext();
 
-  const canWriteNotice = currentUser?.role === "최고관리자" || currentUser?.role === "팀장";
+  const isDark = customSettings?.darkMode;
+
+  const isAdmin = currentUser?.role === "최고관리자";
+  const userDepartment = currentUser?.department;
+
+  const accessibleBoards = useMemo(() => {
+    if (isAdmin) {
+      return boardList;
+    }
+
+    return boardList.filter(
+      (board) => board === "전체" || board === userDepartment
+    );
+  }, [isAdmin, userDepartment]);
+
+  const [selectedBoard, setSelectedBoard] = useState("전체");
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [searchKeyword, setSearchKeyword] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const postsPerPage = 8;
 
-  const [showWriteDialog, setShowWriteDialog] = useState(false);
-  const [formCategory, setFormCategory] = useState("잡담");
-  const [formTitle, setFormTitle] = useState("");
-  const [formContent, setFormContent] = useState("");
+  const postsPerPage = 2;
 
   const categories = ["전체", "잡담", "사진/영상", "정보", "이벤트", "공지"];
 
   const [posts, setPosts] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : defaultPosts;
+
+    if (!saved) {
+      return defaultPosts;
+    }
+
+    try {
+      return JSON.parse(saved);
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+      return defaultPosts;
+    }
   });
+
+  useEffect(() => {
+    if (!accessibleBoards.includes(selectedBoard)) {
+      setSelectedBoard("전체");
+    }
+  }, [accessibleBoards, selectedBoard]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+
+    if (!saved) {
+      setPosts(defaultPosts);
+      return;
+    }
+
+    try {
+      setPosts(JSON.parse(saved));
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+      setPosts(defaultPosts);
+    }
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
@@ -101,12 +153,67 @@ export function CommunityPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, searchKeyword]);
+  }, [selectedBoard, selectedCategory, searchKeyword]);
+
+  const canAccessPost = (post) => {
+    const postBoard = post.board || "전체";
+
+    if (postBoard === "전체") return true;
+    if (isAdmin) return true;
+
+    return postBoard === userDepartment;
+  };
+
+  const getPostAuthorLabel = (post) => {
+    if (post.author === currentUser?.name) {
+      return "내가 쓴 글";
+    }
+
+    return "익명";
+  };
+
+  const communityCardClass = isDark
+    ? "bg-[#35353d] border-[#5c5c73] text-white"
+    : "bg-white border-gray-200";
+
+  const communityHeaderClass = isDark
+    ? "border-[#5c5c73] bg-[#35353d]"
+    : "border-gray-200 bg-white";
+
+  const normalPostClass = isDark
+    ? "bg-[#35353d] hover:bg-[#3f3f48] border-[#5c5c73]"
+    : "bg-white hover:bg-gray-50 border-gray-100";
+
+  const noticePostClass = isDark
+    ? "bg-[#41414a] hover:bg-[#484852] border-[#5c5c73]"
+    : "bg-gray-50 hover:bg-gray-100 border-gray-100";
+
+  const popularPostClass = isDark
+    ? "bg-[#4a4a52] hover:bg-[#52525b] border-[#5c5c73]"
+    : "bg-blue-50/40 hover:bg-blue-50 border-gray-100";
+
+  const primaryButtonClass = isDark
+    ? "bg-[#5c5c73] hover:bg-[#6a6a82] text-white"
+    : "bg-blue-600 hover:bg-blue-700 text-white";
+
+  const inputClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white placeholder:text-zinc-400"
+    : "";
+
+  const outlineButtonClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white hover:bg-[#48484f]"
+    : "";
 
   const filteredPosts = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase();
 
     return posts.filter((post) => {
+      if (!canAccessPost(post)) return false;
+
+      const postBoard = post.board || "전체";
+
+      const matchesBoard = postBoard === selectedBoard;
+
       const matchesCategory =
         selectedCategory === "전체" ? true : post.category === selectedCategory;
 
@@ -114,23 +221,34 @@ export function CommunityPage() {
         keyword === ""
           ? true
           : post.title.toLowerCase().includes(keyword) ||
-            post.author.toLowerCase().includes(keyword) ||
+            postBoard.toLowerCase().includes(keyword) ||
+            post.category.toLowerCase().includes(keyword) ||
             (post.content || "").toLowerCase().includes(keyword);
 
-      return matchesCategory && matchesKeyword;
+      return matchesBoard && matchesCategory && matchesKeyword;
     });
-  }, [posts, selectedCategory, searchKeyword]);
+  }, [
+    posts,
+    selectedBoard,
+    selectedCategory,
+    searchKeyword,
+    isAdmin,
+    userDepartment,
+  ]);
 
   const pinnedNoticePosts = filteredPosts.filter((post) => post.type === "공지");
+
   const popularPosts = filteredPosts.filter(
     (post) => post.type !== "공지" && (post.comments || 0) >= 10
   );
+
   const regularPosts = filteredPosts.filter(
     (post) => post.type !== "공지" && (post.comments || 0) < 10
   );
 
   const totalPages = Math.max(1, Math.ceil(regularPosts.length / postsPerPage));
   const startIndex = (currentPage - 1) * postsPerPage;
+
   const paginatedRegularPosts = regularPosts.slice(
     startIndex,
     startIndex + postsPerPage
@@ -168,90 +286,96 @@ export function CommunityPage() {
     return map[category] || "text-gray-600";
   };
 
-  const handleWriteSubmit = (e) => {
-    e.preventDefault();
+  const renderPostItem = (post, postClassName = "") => {
+    const isMyPost = post.author === currentUser?.name;
 
-    if (!formTitle.trim() || !formContent.trim()) {
-      alert("제목과 내용을 입력해주세요.");
-      return;
-    }
+    return (
+      <li
+        key={post.id}
+        className={cn(
+          "px-5 py-4 border-b cursor-pointer transition-colors",
+          postClassName
+        )}
+        onClick={() => navigate(`/community/${post.id}`)}
+      >
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 pt-0.5">{getTypeBadge(post)}</div>
 
-    if (formCategory === "공지" && !canWriteNotice) {
-      alert("일반직원은 공지글을 작성할 수 없습니다.");
-      return;
-    }
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3
+                className={cn(
+                  "text-lg font-medium break-words",
+                  isDark ? "text-white" : "text-gray-900"
+                )}
+              >
+                {post.title}
+              </h3>
 
-    const newPost = {
-      id: Math.max(0, ...posts.map((p) => p.id)) + 1,
-      type: formCategory === "공지" ? "공지" : "일반",
-      category: formCategory,
-      title: formTitle,
-      author: currentUser?.name || "익명",
-      date: "방금 전",
-      views: 0,
-      comments: 0,
-      likes: 0,
-      content: formContent,
-    };
+              {post.comments > 0 && (
+                <span className="text-blue-600 font-medium">
+                  [{post.comments}]
+                </span>
+              )}
+            </div>
 
-    setPosts([newPost, ...posts]);
-    setFormCategory("잡담");
-    setFormTitle("");
-    setFormContent("");
-    setShowWriteDialog(false);
-    setSelectedCategory("전체");
-    setCurrentPage(1);
-  };
+            <div
+              className={cn(
+                "mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm",
+                isDark ? "text-zinc-300" : "text-gray-500"
+              )}
+            >
+              <span>{post.date}</span>
 
-  const renderPostItem = (post, extraClass = "") => (
-    <li
-      key={post.id}
-      className={cn(
-        "px-5 py-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors",
-        extraClass
-      )}
-      onClick={() => navigate(`/community/${post.id}`)}
-    >
-      <div className="flex items-start gap-3">
-        <div className="shrink-0 pt-0.5">{getTypeBadge(post)}</div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-lg font-medium text-gray-900 break-words">
-              {post.title}
-            </h3>
-            {post.comments > 0 && (
-              <span className="text-blue-600 font-medium">
-                [{post.comments}]
+              <span
+                className={cn(
+                  "font-medium",
+                  isDark ? "text-zinc-200" : "text-gray-700"
+                )}
+              >
+                {post.board || "전체"} 게시판
               </span>
-            )}
-          </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
-            <span>{post.date}</span>
-            <span className={getCategoryColor(post.category)}>
-              {post.category}
-            </span>
-            <span>{post.author}</span>
-            <span className="flex items-center gap-1">
-              <Eye className="size-3.5" />
-              {post.views}
-            </span>
-            {typeof post.likes === "number" && (
+              <span className={getCategoryColor(post.category)}>
+                {post.category}
+              </span>
+
+              <span
+                className={cn(
+                  isMyPost
+                    ? isDark
+                      ? "text-zinc-100 font-medium"
+                      : "text-gray-800 font-medium"
+                    : isDark
+                    ? "text-zinc-400"
+                    : "text-gray-500"
+                )}
+              >
+                {getPostAuthorLabel(post)}
+              </span>
+
               <span className="flex items-center gap-1">
-                <Flame className="size-3.5" />
-                {post.likes}
+                <Eye className="size-3.5" />
+                {post.views}
               </span>
-            )}
-            <span className="flex items-center gap-1">
-              <MessageSquare className="size-3.5" />
-              {post.comments}
-            </span>
+
+              {typeof post.likes === "number" && (
+                <span className="flex items-center gap-1">
+                  <Flame className="size-3.5" />
+                  {post.likes}
+                </span>
+              )}
+
+              <span className="flex items-center gap-1">
+                <MessageSquare className="size-3.5" />
+                {post.comments}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    </li>
-  );
+      </li>
+    );
+  };
 
   const hasAnyPosts =
     pinnedNoticePosts.length > 0 ||
@@ -262,92 +386,63 @@ export function CommunityPage() {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">커뮤니티</h2>
-          <p className="text-gray-600 mt-1">
-            사내 자유 게시판과 인기글을 확인하세요
+          <h2
+            className={cn(
+              "text-2xl font-semibold",
+              isDark ? "text-white" : "text-gray-900"
+            )}
+          >
+            커뮤니티
+          </h2>
+
+          <p className={cn("mt-1", isDark ? "text-zinc-300" : "text-gray-600")}>
+            전체 게시판과 내 부서 게시판을 이용할 수 있습니다
           </p>
         </div>
 
-        <Dialog open={showWriteDialog} onOpenChange={setShowWriteDialog}>
-          <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <PencilLine className="size-4 mr-2" />
-              글쓰기
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>커뮤니티 글쓰기</DialogTitle>
-            </DialogHeader>
-
-            <form className="space-y-4" onSubmit={handleWriteSubmit}>
-              <div className="space-y-2">
-                <Label>카테고리</Label>
-                <Select value={formCategory} onValueChange={setFormCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="카테고리 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="잡담">잡담</SelectItem>
-                    <SelectItem value="사진/영상">사진/영상</SelectItem>
-                    <SelectItem value="정보">정보</SelectItem>
-                    <SelectItem value="이벤트">이벤트</SelectItem>
-                    {canWriteNotice && <SelectItem value="공지">공지</SelectItem>}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>제목</Label>
-                <Input
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  placeholder="제목을 입력하세요"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>내용</Label>
-                <Textarea
-                  rows={8}
-                  value={formContent}
-                  onChange={(e) => setFormContent(e.target.value)}
-                  placeholder="내용을 입력하세요"
-                />
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="size-4 mr-2" />
-                  등록하기
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowWriteDialog(false)}
-                >
-                  취소
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button
+          className={cn(primaryButtonClass)}
+          onClick={() => navigate(`/community/write?board=${selectedBoard}`)}
+        >
+          <PencilLine className="size-4 mr-2" />
+          글쓰기
+        </Button>
       </div>
 
-      <Card>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {accessibleBoards.map((board) => (
+          <button
+            key={board}
+            type="button"
+            onClick={() => setSelectedBoard(board)}
+            className={cn(
+              "px-4 py-2 rounded-md text-sm font-medium border transition-colors",
+              selectedBoard === board
+                ? isDark
+                  ? "bg-[#6b6b78] text-white border-[#8b8b96]"
+                  : "bg-gray-900 text-white border-gray-900"
+                : isDark
+                ? "bg-[#35353d] text-zinc-100 border-[#5c5c73] hover:bg-[#3f3f48]"
+                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+            )}
+          >
+            {board === "전체" ? "전체 게시판" : `${board} 게시판`}
+          </button>
+        ))}
+      </div>
+
+      <Card className={cn(communityCardClass)}>
         <CardContent className="p-0">
-          <div className="border-b border-gray-200 px-4 py-4">
+          <div className={cn("border-b px-4 py-4", communityHeaderClass)}>
             <div className="flex flex-col lg:flex-row lg:items-center gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+
                 <Input
                   value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
-                  placeholder="게시글 검색"
-                  className="pl-9"
+                  placeholder={`${selectedBoard} 게시판 검색`}
+                  className={cn("pl-9", inputClass)}
                 />
               </div>
 
@@ -355,11 +450,16 @@ export function CommunityPage() {
                 {categories.map((category) => (
                   <button
                     key={category}
+                    type="button"
                     onClick={() => setSelectedCategory(category)}
                     className={cn(
                       "px-3 py-2 rounded-md text-sm border transition-colors",
                       selectedCategory === category
-                        ? "bg-blue-600 text-white border-blue-600"
+                        ? isDark
+                          ? "bg-[#5c5c73] text-white border-[#5c5c73]"
+                          : "bg-blue-600 text-white border-blue-600"
+                        : isDark
+                        ? "bg-[#35353d] text-zinc-100 border-[#5c5c73] hover:bg-[#3f3f48]"
                         : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                     )}
                   >
@@ -372,17 +472,28 @@ export function CommunityPage() {
 
           <div>
             {!hasAnyPosts ? (
-              <div className="py-16 text-center text-gray-500">
-                조건에 맞는 게시글이 없습니다.
+              <div
+                className={cn(
+                  "py-16 text-center",
+                  isDark ? "text-zinc-400" : "text-gray-500"
+                )}
+              >
+                {selectedBoard} 게시판에 조건에 맞는 게시글이 없습니다.
               </div>
             ) : (
               <>
                 <ul>
-                  {pinnedNoticePosts.map((post) => renderPostItem(post, "bg-gray-50"))}
-                  {popularPosts.map((post) =>
-                    renderPostItem(post, "bg-blue-50/40")
+                  {pinnedNoticePosts.map((post) =>
+                    renderPostItem(post, noticePostClass)
                   )}
-                  {paginatedRegularPosts.map((post) => renderPostItem(post))}
+
+                  {popularPosts.map((post) =>
+                    renderPostItem(post, popularPostClass)
+                  )}
+
+                  {paginatedRegularPosts.map((post) =>
+                    renderPostItem(post, normalPostClass)
+                  )}
                 </ul>
 
                 {regularPosts.length > 0 && totalPages > 1 && (
@@ -392,6 +503,7 @@ export function CommunityPage() {
                       size="sm"
                       disabled={currentPage === 1}
                       onClick={() => setCurrentPage(currentPage - 1)}
+                      className={outlineButtonClass}
                     >
                       이전
                     </Button>
@@ -403,7 +515,12 @@ export function CommunityPage() {
                           size="sm"
                           variant={currentPage === page ? "default" : "outline"}
                           onClick={() => setCurrentPage(page)}
-                          className="min-w-9"
+                          className={cn(
+                            "min-w-9",
+                            currentPage === page
+                              ? primaryButtonClass
+                              : outlineButtonClass
+                          )}
                         >
                           {page}
                         </Button>
@@ -415,6 +532,7 @@ export function CommunityPage() {
                       size="sm"
                       disabled={currentPage === totalPages}
                       onClick={() => setCurrentPage(currentPage + 1)}
+                      className={outlineButtonClass}
                     >
                       다음
                     </Button>

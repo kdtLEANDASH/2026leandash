@@ -3,9 +3,11 @@ import { useOutletContext } from "react-router-dom";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/UI/card";
 import { Calendar as CalendarComp } from "@/components/UI/calendar";
+import { cn } from "@/components/UI/utils";
 
 export default function VacationInfoPage() {
   const {
+    isDark,
     currentUser,
     vacationBalance,
     selectedDate,
@@ -16,6 +18,18 @@ export default function VacationInfoPage() {
   } = useOutletContext();
 
   const currentUserId = currentUser?.userId || currentUser?.id;
+
+  const cardClass = isDark
+    ? "bg-[#35353d] border-[#5c5c73] text-white"
+    : "bg-white border-gray-200";
+
+  const calendarBoxClass = isDark
+    ? "bg-[#2f2f36] border-[#5c5c73] text-white"
+    : "bg-white border-gray-200";
+
+  const textMain = isDark ? "text-white" : "text-gray-900";
+  const textSub = isDark ? "text-zinc-300" : "text-gray-600";
+  const textMuted = isDark ? "text-zinc-400" : "text-gray-500";
 
   const toLocalDate = (dateStr) => {
     if (!dateStr) return new Date();
@@ -35,6 +49,18 @@ export default function VacationInfoPage() {
   };
 
   const getEventBoxClass = (type) => {
+    if (isDark) {
+      const darkMap = {
+        개인: "bg-purple-500/15 border-purple-400/40 text-purple-200",
+        팀: "bg-blue-500/15 border-blue-400/40 text-blue-200",
+        전사: "bg-green-500/15 border-green-400/40 text-green-200",
+        공휴일: "bg-red-500/15 border-red-400/40 text-red-200",
+        휴가: "bg-orange-500/15 border-orange-400/40 text-orange-200",
+      };
+
+      return darkMap[type] || "bg-[#2f2f36] border-[#5c5c73] text-zinc-200";
+    }
+
     const map = {
       개인: "bg-purple-50 border-purple-200 text-purple-800",
       팀: "bg-blue-50 border-blue-200 text-blue-800",
@@ -47,6 +73,18 @@ export default function VacationInfoPage() {
   };
 
   const getSubTextClass = (type) => {
+    if (isDark) {
+      const darkMap = {
+        개인: "text-purple-200",
+        팀: "text-blue-200",
+        전사: "text-green-200",
+        공휴일: "text-red-200",
+        휴가: "text-orange-200",
+      };
+
+      return darkMap[type] || "text-zinc-400";
+    }
+
     const map = {
       개인: "text-purple-700",
       팀: "text-blue-700",
@@ -117,37 +155,47 @@ export default function VacationInfoPage() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card className={cardClass}>
           <CardContent className="p-6">
-            <div className="text-sm text-gray-600 mb-2">총 휴가</div>
-            <div className="text-3xl font-bold text-gray-900">
+            <div className={cn("text-sm mb-2", textSub)}>총 휴가</div>
+            <div className={cn("text-3xl font-bold", textMain)}>
               {vacationBalance.total}일
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={cardClass}>
           <CardContent className="p-6">
-            <div className="text-sm text-gray-600 mb-2">사용</div>
-            <div className="text-3xl font-bold text-orange-600">
+            <div className={cn("text-sm mb-2", textSub)}>사용</div>
+            <div
+              className={cn(
+                "text-3xl font-bold",
+                isDark ? "text-orange-300" : "text-orange-600"
+              )}
+            >
               {vacationBalance.used}일
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={cardClass}>
           <CardContent className="p-6">
-            <div className="text-sm text-gray-600 mb-2">잔여</div>
-            <div className="text-3xl font-bold text-blue-600">
+            <div className={cn("text-sm mb-2", textSub)}>잔여</div>
+            <div
+              className={cn(
+                "text-3xl font-bold",
+                isDark ? "text-[#d8d8e3]" : "text-blue-600"
+              )}
+            >
               {vacationBalance.remaining}일
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className={cardClass}>
+        <CardHeader className={isDark ? "border-b border-[#5c5c73]" : ""}>
+          <CardTitle className={cn("flex items-center gap-2", textMain)}>
             <CalendarIcon className="size-5" />
             캘린더
           </CardTitle>
@@ -162,7 +210,31 @@ export default function VacationInfoPage() {
                 onSelect={(selected) => {
                   if (selected) setSelectedDate(selected);
                 }}
-                className="rounded-md border text-base"
+                className={cn("rounded-md border text-base", calendarBoxClass)}
+                classNames={{
+                  months:
+                    "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                  month: "space-y-4",
+                  caption: "flex justify-center pt-1 relative items-center",
+                  caption_label: "text-lg font-medium",
+                  nav: "space-x-1 flex items-center",
+                  nav_button: cn(
+                    "h-8 w-8 bg-transparent p-0 opacity-70 hover:opacity-100",
+                    isDark ? "hover:bg-[#48484f]" : ""
+                  ),
+                  table: "w-full border-collapse space-y-1",
+                  head_row: "flex",
+                  head_cell: cn(
+                    "rounded-md w-10 font-normal text-sm",
+                    isDark ? "text-zinc-300" : "text-gray-500"
+                  ),
+                  row: "flex w-full mt-2",
+                  cell: "h-10 w-10 text-center text-sm p-0 relative",
+                  day: cn(
+                    "h-10 w-10 p-0 font-normal rounded-md",
+                    isDark ? "hover:bg-[#48484f]" : ""
+                  ),
+                }}
                 personalDates={personalDates}
                 teamDates={teamDates}
                 companyDates={companyDates}
@@ -172,18 +244,21 @@ export default function VacationInfoPage() {
             </div>
 
             <div className="space-y-3">
-              <h3 className="font-semibold text-gray-900">선택한 날짜 일정</h3>
+              <h3 className={cn("font-semibold", textMain)}>
+                선택한 날짜 일정
+              </h3>
 
               {selectedDateData.events.map((event) => (
                 <div
                   key={event.id}
-                  className={`p-3 border rounded-lg text-sm ${getEventBoxClass(
-                    event.type
-                  )}`}
+                  className={cn(
+                    "p-3 border rounded-lg text-sm",
+                    getEventBoxClass(event.type)
+                  )}
                 >
                   <div className="font-medium">{event.title}</div>
 
-                  <div className={`text-xs mt-1 ${getSubTextClass(event.type)}`}>
+                  <div className={cn("text-xs mt-1", getSubTextClass(event.type))}>
                     {event.type}
                     {event.startTime && event.endTime
                       ? ` · ${event.startTime} - ${event.endTime}`
@@ -191,9 +266,7 @@ export default function VacationInfoPage() {
                   </div>
 
                   {event.description && (
-                    <div
-                      className={`text-xs mt-1 ${getSubTextClass(event.type)}`}
-                    >
+                    <div className={cn("text-xs mt-1", getSubTextClass(event.type))}>
                       {event.description}
                     </div>
                   )}
@@ -203,15 +276,23 @@ export default function VacationInfoPage() {
               {selectedDateData.vacations.map((vacation) => (
                 <div
                   key={vacation.id}
-                  className={`p-3 border rounded-lg text-sm ${getEventBoxClass(
-                    "휴가"
-                  )}`}
+                  className={cn(
+                    "p-3 border rounded-lg text-sm",
+                    isDark
+                      ? "bg-orange-500/15 border-orange-400/40 text-orange-200"
+                      : "bg-orange-50 border-orange-200 text-orange-800"
+                  )}
                 >
                   <div className="font-medium">
                     {vacation.employeeName} · {vacation.type}
                   </div>
 
-                  <div className="text-xs text-orange-700 mt-1">
+                  <div
+                    className={cn(
+                      "text-xs mt-1",
+                      isDark ? "text-orange-200" : "text-orange-700"
+                    )}
+                  >
                     {vacation.startDate} ~ {vacation.endDate}
                   </div>
                 </div>
@@ -219,7 +300,7 @@ export default function VacationInfoPage() {
 
               {selectedDateData.events.length === 0 &&
                 selectedDateData.vacations.length === 0 && (
-                  <div className="text-sm text-gray-500 py-8 text-center">
+                  <div className={cn("text-sm py-8 text-center", textMuted)}>
                     일정이 없습니다
                   </div>
                 )}
