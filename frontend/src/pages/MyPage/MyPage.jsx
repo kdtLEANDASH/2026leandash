@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   User,
   Mail,
@@ -11,6 +11,7 @@ import {
   Save,
   X,
   Lock,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/UI/card";
 import { Button } from "@/components/UI/button";
@@ -25,11 +26,86 @@ import {
 } from "@/components/UI/dialog";
 import { useAppContext } from "@/store/AppProvider";
 import { cn } from "@/components/UI/utils";
+import {
+  getMyProfileApi,
+  updateMyProfileApi,
+  changeMyPasswordApi,
+} from "@/api/userApi";
+
+function unwrapResponse(result) {
+  return result?.data ?? result?.result ?? result;
+}
+
+function normalizeUser(user) {
+  if (!user) return null;
+
+  const department =
+    user.departmentName ||
+    user.department ||
+    user.deptName ||
+    user.department_name ||
+    user.raw?.departmentName ||
+    user.raw?.department ||
+    "-";
+
+  const status =
+    user.status ??
+    user.userStatus ??
+    user.user_status ??
+    user.currentStatus ??
+    "업무 중";
+
+  return {
+    id: user.id ?? user.userId ?? user.user_id ?? "",
+    userId: user.userId ?? user.user_id ?? user.id ?? "",
+    employeeNo: user.employeeNo ?? user.employee_no ?? "",
+    name: user.name ?? user.userName ?? user.user_name ?? "",
+    email: user.email ?? "",
+    phone: user.phone ?? "",
+    address: user.address ?? "",
+    position: user.position ?? "",
+    department,
+    role:
+      user.role === "ADMIN"
+        ? "최고관리자"
+        : user.role === "MANAGER"
+        ? "팀장"
+        : user.role === "USER"
+        ? "일반직원"
+        : user.role ?? "",
+    status,
+    hireDate:
+      user.hireDate ??
+      user.hire_date ??
+      user.createdAt?.slice?.(0, 10) ??
+      user.created_at?.slice?.(0, 10) ??
+      "-",
+    mbti: user.mbti ?? "",
+    birthDate: user.birthDate ?? user.birth_date ?? "",
+    gender: user.gender ?? "",
+    raw: user,
+  };
+}
+
+function displayStatus(status) {
+  const map = {
+    ONLINE: "업무 중",
+    OFFLINE: "오프라인",
+    AWAY: "자리 비움",
+    FOCUS: "집중 모드",
+    VACATION: "휴가 중",
+  };
+
+  return map[status] || status || "업무 중";
+}
 
 export function MyPage() {
   const { currentUser, customSettings } = useAppContext();
   const isDark = customSettings?.darkMode;
 
+  const [profile, setProfile] = useState(() => normalizeUser(currentUser));
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -38,12 +114,11 @@ export function MyPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [formData, setFormData] = useState({
-    name: currentUser?.name || "",
-    email: currentUser?.email || "",
-    phone: currentUser?.phone || "",
-    position: currentUser?.position || "",
-    department: currentUser?.department || "",
-    mbti: currentUser?.mbti || "",
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    mbti: "",
   });
 
   const cardClass = isDark
@@ -52,6 +127,10 @@ export function MyPage() {
 
   const fieldClass = isDark
     ? "bg-[#2f2f36] border border-[#5c5c73] text-zinc-100"
+    : "bg-gray-50 text-gray-900";
+
+  const pageClass = isDark
+    ? "bg-[#27272a] text-white"
     : "bg-gray-50 text-gray-900";
 
   const textMainClass = isDark ? "text-white" : "text-gray-900";
@@ -70,22 +149,98 @@ export function MyPage() {
     ? "bg-[#2f2f36] border-[#5c5c73] text-white placeholder:text-zinc-400"
     : "";
 
-  const handleSave = () => {
-    // TODO: 실제 저장 로직 구현
-    // 현재는 UI 반영용으로 formData 값을 화면에 유지한다.
-    setIsEditing(false);
+  const modalClass = isDark
+    ? "bg-[#35353d] border-[#5c5c73] text-white"
+    : "";
+
+  const applyProfileToForm = (user) => {
+    setFormData({
+      name: user?.name || "",
+      email: user?.email || "",
+      phone: user?.phone || "",
+      address: user?.address || "",
+      mbti: user?.mbti || "",
+    });
+  };
+
+  const loadMyProfile = async () => {
+    try {
+      setIsLoading(true);
+
+      const result = await getMyProfileApi();
+      const data = unwrapResponse(result);
+      const normalized = normalizeUser(data);
+
+      setProfile(normalized);
+      applyProfileToForm(normalized);
+    } catch (error) {
+      console.error("내 정보 조회 실패:", error);
+
+      const fallback = normalizeUser(currentUser);
+      setProfile(fallback);
+      applyProfileToForm(fallback);
+
+      alert("내 정보를 불러오지 못했습니다. 로그인 상태를 확인해주세요.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMyProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSave = async () => {
+    if (!formData.name.trim()) {
+      alert("이름을 입력해주세요.");
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      alert("이메일을 입력해주세요.");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      const payload = {
+        userName: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        address: formData.address.trim(),
+        mbti: formData.mbti.trim().toUpperCase(),
+      };
+
+      const result = await updateMyProfileApi(payload);
+      const data = unwrapResponse(result);
+
+      const updatedProfile =
+        normalizeUser(data) || {
+          ...profile,
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          address: formData.address.trim(),
+          mbti: formData.mbti.trim().toUpperCase(),
+        };
+
+      setProfile(updatedProfile);
+      applyProfileToForm(updatedProfile);
+      setIsEditing(false);
+
+      alert("내 정보가 수정되었습니다.");
+    } catch (error) {
+      console.error("내 정보 수정 실패:", error);
+      alert("내 정보 수정에 실패했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
-    setFormData({
-      name: currentUser?.name || "",
-      email: currentUser?.email || "",
-      phone: currentUser?.phone || "",
-      position: currentUser?.position || "",
-      department: currentUser?.department || "",
-      mbti: currentUser?.mbti || "",
-    });
-
+    applyProfileToForm(profile);
     setIsEditing(false);
   };
 
@@ -99,7 +254,7 @@ export function MyPage() {
     setShowPasswordModal(true);
   };
 
-  const handlePasswordSubmit = () => {
+  const handlePasswordSubmit = async () => {
     if (!currentPassword.trim()) {
       alert("현재 비밀번호를 입력해주세요.");
       return;
@@ -110,67 +265,128 @@ export function MyPage() {
       return;
     }
 
-    if (newPassword.length < 4) {
-      alert("새 비밀번호는 최소 4자 이상 입력해주세요.");
-      return;
-    }
-
     if (newPassword !== confirmPassword) {
-      alert("새 비밀번호가 일치하지 않습니다.");
+      alert("새 비밀번호와 비밀번호 확인이 일치하지 않습니다.");
       return;
     }
 
-    alert("비밀번호가 변경되었습니다.");
+    try {
+      await changeMyPasswordApi({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
 
-    resetPasswordForm();
-    setShowPasswordModal(false);
-  };
+      alert("비밀번호가 변경되었습니다.");
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "업무 중":
-        return "bg-green-100 text-green-700";
-      case "자리 비움":
-        return "bg-yellow-100 text-yellow-700";
-      case "집중 모드":
-        return "bg-purple-100 text-purple-700";
-      case "휴가 중":
-        return "bg-blue-100 text-blue-700";
-      case "오프라인":
-        return "bg-gray-100 text-gray-700";
-      default:
-        return "bg-gray-100 text-gray-700";
+      resetPasswordForm();
+      setShowPasswordModal(false);
+    } catch (error) {
+      console.error("비밀번호 변경 실패:", error);
+
+      let message = "비밀번호 변경에 실패했습니다.";
+
+      try {
+        const parsed = JSON.parse(error.message);
+        message = parsed.message || message;
+      } catch {
+        if (error.message) {
+          message = error.message;
+        }
+      }
+
+      alert(message);
     }
   };
+  const getStatusColor = (status) => {
+    const shownStatus = displayStatus(status);
 
-  const getMBTIColor = (mbti = "") => {
-    const type = mbti.slice(0, 2);
+    if (isDark) {
+      const darkColors = {
+        "업무 중":
+          "bg-green-500/20 text-green-300 border border-green-400/30 hover:bg-green-500/20",
+        "자리 비움":
+          "bg-yellow-500/20 text-yellow-300 border border-yellow-400/30 hover:bg-yellow-500/20",
+        "집중 모드":
+          "bg-purple-500/20 text-purple-300 border border-purple-400/30 hover:bg-purple-500/20",
+        "휴가 중":
+          "bg-blue-500/20 text-blue-300 border border-blue-400/30 hover:bg-blue-500/20",
+        오프라인:
+          "bg-zinc-600 text-zinc-200 border border-zinc-500 hover:bg-zinc-600",
+      };
+
+      return darkColors[shownStatus] || darkColors["오프라인"];
+    }
 
     const colors = {
-      IS: "bg-blue-100 text-blue-700 hover:bg-blue-100",
-      IN: "bg-purple-100 text-purple-700 hover:bg-purple-100",
-      ES: "bg-green-100 text-green-700 hover:bg-green-100",
-      EN: "bg-orange-100 text-orange-700 hover:bg-orange-100",
+      "업무 중": "bg-green-100 text-green-700 hover:bg-green-100",
+      "자리 비움": "bg-yellow-100 text-yellow-700 hover:bg-yellow-100",
+      "집중 모드": "bg-purple-100 text-purple-700 hover:bg-purple-100",
+      "휴가 중": "bg-blue-100 text-blue-700 hover:bg-blue-100",
+      오프라인: "bg-gray-100 text-gray-700 hover:bg-gray-100",
     };
 
-    return colors[type] || "bg-gray-100 text-gray-700 hover:bg-gray-100";
+    return colors[shownStatus] || colors["오프라인"];
   };
 
-  const displayUser = {
-    ...currentUser,
-    ...formData,
+  const getMBTIColor = (mbti) => {
+    if (!mbti) {
+      return isDark
+        ? "bg-zinc-600 text-zinc-200 border border-zinc-500"
+        : "bg-gray-100 text-gray-700";
+    }
+
+    const type = mbti.slice(0, 2);
+
+    if (isDark) {
+      const darkColors = {
+        IS: "bg-blue-500/20 text-blue-300 border border-blue-400/30",
+        IN: "bg-purple-500/20 text-purple-300 border border-purple-400/30",
+        ES: "bg-green-500/20 text-green-300 border border-green-400/30",
+        EN: "bg-orange-500/20 text-orange-300 border border-orange-400/30",
+      };
+
+      return (
+        darkColors[type] ||
+        "bg-zinc-600 text-zinc-200 border border-zinc-500"
+      );
+    }
+
+    const colors = {
+      IS: "bg-blue-100 text-blue-700",
+      IN: "bg-purple-100 text-purple-700",
+      ES: "bg-green-100 text-green-700",
+      EN: "bg-orange-100 text-orange-700",
+    };
+
+    return colors[type] || "bg-gray-100 text-gray-700";
   };
 
-  if (!currentUser) {
+  const user = profile;
+
+  if (isLoading && !user) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className={cn("flex items-center justify-center h-full", pageClass)}>
+        <div className={cn("flex items-center gap-2", textMutedClass)}>
+          <RefreshCw className="size-5 animate-spin" />
+          <span>사용자 정보를 불러오는 중입니다.</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className={cn("flex items-center justify-center h-full", pageClass)}>
         <p className={textMutedClass}>사용자 정보를 불러올 수 없습니다.</p>
       </div>
     );
   }
 
+  const shownStatus = displayStatus(user.status);
+
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className={cn("p-6 max-w-5xl mx-auto min-h-full", pageClass)}>
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h2
@@ -188,30 +404,47 @@ export function MyPage() {
             내 정보
           </h2>
 
-          <p className={textSubClass}>
-            개인 정보를 확인하고 수정할 수 있습니다
-          </p>
+          <p className={textSubClass}>개인 정보를 확인하고 수정할 수 있습니다</p>
         </div>
 
         {!isEditing ? (
-          <Button
-            onClick={() => setIsEditing(true)}
-            className={primaryButtonClass}
-          >
-            <Edit2 className="size-4 mr-2" />
-            정보 수정
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className={outlineButtonClass}
+              onClick={loadMyProfile}
+              disabled={isLoading}
+            >
+              <RefreshCw
+                className={cn("size-4 mr-2", isLoading && "animate-spin")}
+              />
+              새로고침
+            </Button>
+
+            <Button
+              onClick={() => setIsEditing(true)}
+              className={primaryButtonClass}
+            >
+              <Edit2 className="size-4 mr-2" />
+              정보 수정
+            </Button>
+          </div>
         ) : (
           <div className="flex gap-2">
-            <Button onClick={handleSave} className={primaryButtonClass}>
+            <Button
+              onClick={handleSave}
+              className={primaryButtonClass}
+              disabled={isSaving}
+            >
               <Save className="size-4 mr-2" />
-              저장
+              {isSaving ? "저장 중..." : "저장"}
             </Button>
 
             <Button
               onClick={handleCancel}
               variant="outline"
               className={outlineButtonClass}
+              disabled={isSaving}
             >
               <X className="size-4 mr-2" />
               취소
@@ -233,51 +466,52 @@ export function MyPage() {
                       : "bg-gradient-to-br from-blue-600 to-blue-800"
                   )}
                 >
-                  {displayUser.name?.charAt(0)}
+                  {user.name?.charAt(0) || "?"}
                 </div>
 
                 <Badge
-                  className={`absolute bottom-2 right-2 ${getStatusColor(
-                    currentUser.status
-                  )}`}
+                  className={cn(
+                    "absolute bottom-2 right-2",
+                    getStatusColor(user.status)
+                  )}
                 >
-                  {currentUser.status}
+                  {shownStatus}
                 </Badge>
               </div>
 
               <h3 className={cn("text-xl font-semibold mb-1", textMainClass)}>
-                {displayUser.name}
+                {user.name || "-"}
               </h3>
 
               <p className={cn("text-sm mb-3", textMutedClass)}>
-                {displayUser.position}
+                {user.position || "-"}
               </p>
 
-              <Badge className={getMBTIColor(displayUser.mbti)}>
-                {displayUser.mbti || "MBTI 없음"}
+              <Badge className={getMBTIColor(user.mbti)}>
+                {user.mbti || "MBTI 없음"}
               </Badge>
             </div>
 
             <div
               className={cn(
-                "mt-6 pt-6 space-y-3 border-t",
+                "mt-6 pt-6 border-t space-y-3",
                 isDark ? "border-[#5c5c73]" : "border-gray-200"
               )}
             >
               <div className="flex items-center gap-3 text-sm">
                 <Briefcase className="size-4 text-gray-400" />
-                <span className={textSubClass}>{displayUser.department}</span>
+                <span className={textSubClass}>{user.department || "-"}</span>
               </div>
 
               <div className="flex items-center gap-3 text-sm">
                 <Award className="size-4 text-gray-400" />
-                <span className={textSubClass}>{currentUser.role}</span>
+                <span className={textSubClass}>{user.role || "-"}</span>
               </div>
 
               <div className="flex items-center gap-3 text-sm">
                 <Calendar className="size-4 text-gray-400" />
                 <span className={textSubClass}>
-                  입사일: {currentUser.hireDate}
+                  입사일: {user.hireDate || "-"}
                 </span>
               </div>
             </div>
@@ -285,12 +519,12 @@ export function MyPage() {
         </Card>
 
         <div className="lg:col-span-2 space-y-6">
-          <Card className={cardClass}>
-            <CardHeader className={isDark ? "border-b border-[#5c5c73]" : ""}>
+          <Card className={cn(cardClass)}>
+            <CardHeader>
               <CardTitle className="text-lg">기본 정보</CardTitle>
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">이름</Label>
@@ -312,7 +546,7 @@ export function MyPage() {
                       )}
                     >
                       <User className="size-4 text-gray-400" />
-                      <span>{displayUser.name}</span>
+                      <span>{user.name || "-"}</span>
                     </div>
                   )}
                 </div>
@@ -338,7 +572,7 @@ export function MyPage() {
                       )}
                     >
                       <Mail className="size-4 text-gray-400" />
-                      <span>{displayUser.email}</span>
+                      <span>{user.email || "-"}</span>
                     </div>
                   )}
                 </div>
@@ -363,7 +597,7 @@ export function MyPage() {
                       )}
                     >
                       <Phone className="size-4 text-gray-400" />
-                      <span>{displayUser.phone}</span>
+                      <span>{user.phone || "-"}</span>
                     </div>
                   )}
                 </div>
@@ -371,13 +605,46 @@ export function MyPage() {
                 <div className="space-y-2">
                   <Label htmlFor="position">직급</Label>
 
+                  <div
+                    className={cn(
+                      "flex items-center gap-2 p-2 rounded-lg",
+                      fieldClass
+                    )}
+                  >
+                    <Briefcase className="size-4 text-gray-400" />
+                    <span>{user.position || "-"}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="department">부서</Label>
+
+                  <div
+                    className={cn(
+                      "flex items-center gap-2 p-2 rounded-lg",
+                      fieldClass
+                    )}
+                  >
+                    <MapPin className="size-4 text-gray-400" />
+                    <span>{user.department || "-"}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="mbti">MBTI</Label>
+
                   {isEditing ? (
                     <Input
-                      id="position"
-                      value={formData.position}
+                      id="mbti"
+                      value={formData.mbti}
+                      maxLength={4}
                       onChange={(e) =>
-                        setFormData({ ...formData, position: e.target.value })
+                        setFormData({
+                          ...formData,
+                          mbti: e.target.value.toUpperCase(),
+                        })
                       }
+                      placeholder="예: ENFP"
                       className={inputClass}
                     />
                   ) : (
@@ -387,24 +654,21 @@ export function MyPage() {
                         fieldClass
                       )}
                     >
-                      <Briefcase className="size-4 text-gray-400" />
-                      <span>{displayUser.position}</span>
+                      <User className="size-4 text-gray-400" />
+                      <span>{user.mbti || "MBTI 없음"}</span>
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="department">부서</Label>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="address">주소</Label>
 
                   {isEditing ? (
                     <Input
-                      id="department"
-                      value={formData.department}
+                      id="address"
+                      value={formData.address}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          department: e.target.value,
-                        })
+                        setFormData({ ...formData, address: e.target.value })
                       }
                       className={inputClass}
                     />
@@ -416,37 +680,7 @@ export function MyPage() {
                       )}
                     >
                       <MapPin className="size-4 text-gray-400" />
-                      <span>{displayUser.department}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="mbti">MBTI</Label>
-
-                  {isEditing ? (
-                    <Input
-                      id="mbti"
-                      value={formData.mbti}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          mbti: e.target.value.toUpperCase(),
-                        })
-                      }
-                      placeholder="예: INTJ"
-                      maxLength={4}
-                      className={inputClass}
-                    />
-                  ) : (
-                    <div
-                      className={cn(
-                        "flex items-center gap-2 p-2 rounded-lg",
-                        fieldClass
-                      )}
-                    >
-                      <Award className="size-4 text-gray-400" />
-                      <span>{displayUser.mbti || "MBTI 없음"}</span>
+                      <span>{user.address || "-"}</span>
                     </div>
                   )}
                 </div>
@@ -479,8 +713,8 @@ export function MyPage() {
             </CardContent>
           </Card>
 
-          <Card className={cardClass}>
-            <CardHeader className={isDark ? "border-b border-[#5c5c73]" : ""}>
+          <Card className={cn(cardClass)}>
+            <CardHeader>
               <CardTitle className="text-lg">근무 정보</CardTitle>
             </CardHeader>
 
@@ -496,7 +730,7 @@ export function MyPage() {
                     )}
                   >
                     <Calendar className="size-4 text-gray-400" />
-                    <span>{currentUser.hireDate}</span>
+                    <span>{user.hireDate || "-"}</span>
                   </div>
                 </div>
 
@@ -510,7 +744,7 @@ export function MyPage() {
                     )}
                   >
                     <Award className="size-4 text-gray-400" />
-                    <span>{currentUser.role}</span>
+                    <span>{user.role || "-"}</span>
                   </div>
                 </div>
 
@@ -524,7 +758,7 @@ export function MyPage() {
                     )}
                   >
                     <div className="size-2 rounded-full bg-green-500" />
-                    <span>{currentUser.status}</span>
+                    <span>{shownStatus}</span>
                   </div>
                 </div>
 
@@ -538,15 +772,15 @@ export function MyPage() {
                     )}
                   >
                     <User className="size-4 text-gray-400" />
-                    <span>EMP-{currentUser.id.toString().padStart(4, "0")}</span>
+                    <span>{user.employeeNo || "-"}</span>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className={cardClass}>
-            <CardHeader className={isDark ? "border-b border-[#5c5c73]" : ""}>
+          <Card className={cn(cardClass)}>
+            <CardHeader>
               <CardTitle className="text-lg">통계</CardTitle>
             </CardHeader>
 
@@ -555,13 +789,13 @@ export function MyPage() {
                 <div
                   className={cn(
                     "p-4 rounded-lg",
-                    isDark ? "bg-[#2f2f36]" : "bg-blue-50"
+                    isDark ? "bg-blue-500/15" : "bg-blue-50"
                   )}
                 >
                   <p
                     className={cn(
                       "text-sm mb-1",
-                      isDark ? "text-zinc-300" : "text-blue-600"
+                      isDark ? "text-blue-300" : "text-blue-600"
                     )}
                   >
                     총 휴가 일수
@@ -569,7 +803,7 @@ export function MyPage() {
                   <p
                     className={cn(
                       "text-2xl font-bold",
-                      isDark ? "text-white" : "text-blue-700"
+                      isDark ? "text-blue-200" : "text-blue-700"
                     )}
                   >
                     15일
@@ -579,13 +813,13 @@ export function MyPage() {
                 <div
                   className={cn(
                     "p-4 rounded-lg",
-                    isDark ? "bg-[#2f2f36]" : "bg-green-50"
+                    isDark ? "bg-green-500/15" : "bg-green-50"
                   )}
                 >
                   <p
                     className={cn(
                       "text-sm mb-1",
-                      isDark ? "text-zinc-300" : "text-green-600"
+                      isDark ? "text-green-300" : "text-green-600"
                     )}
                   >
                     사용 휴가
@@ -593,7 +827,7 @@ export function MyPage() {
                   <p
                     className={cn(
                       "text-2xl font-bold",
-                      isDark ? "text-white" : "text-green-700"
+                      isDark ? "text-green-200" : "text-green-700"
                     )}
                   >
                     7일
@@ -603,13 +837,13 @@ export function MyPage() {
                 <div
                   className={cn(
                     "p-4 rounded-lg",
-                    isDark ? "bg-[#2f2f36]" : "bg-purple-50"
+                    isDark ? "bg-purple-500/15" : "bg-purple-50"
                   )}
                 >
                   <p
                     className={cn(
                       "text-sm mb-1",
-                      isDark ? "text-zinc-300" : "text-purple-600"
+                      isDark ? "text-purple-300" : "text-purple-600"
                     )}
                   >
                     잔여 휴가
@@ -617,7 +851,7 @@ export function MyPage() {
                   <p
                     className={cn(
                       "text-2xl font-bold",
-                      isDark ? "text-white" : "text-purple-700"
+                      isDark ? "text-purple-200" : "text-purple-700"
                     )}
                   >
                     8일
@@ -639,17 +873,12 @@ export function MyPage() {
           }
         }}
       >
-        <DialogContent
-          className={cn(
-            "max-w-md",
-            isDark ? "bg-[#35353d] border-[#5c5c73] text-white" : ""
-          )}
-        >
+        <DialogContent className={cn("max-w-md", modalClass)}>
           <DialogHeader>
             <DialogTitle>비밀번호 변경</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="currentPassword">현재 비밀번호</Label>
               <Input
@@ -657,7 +886,6 @@ export function MyPage() {
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="현재 비밀번호를 입력하세요"
                 className={inputClass}
               />
             </div>
@@ -669,7 +897,6 @@ export function MyPage() {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="새 비밀번호를 입력하세요"
                 className={inputClass}
               />
             </div>
@@ -681,7 +908,6 @@ export function MyPage() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="새 비밀번호를 다시 입력하세요"
                 className={inputClass}
               />
             </div>
@@ -690,21 +916,21 @@ export function MyPage() {
               <Button
                 type="button"
                 variant="outline"
+                className={outlineButtonClass}
                 onClick={() => {
                   resetPasswordForm();
                   setShowPasswordModal(false);
                 }}
-                className={outlineButtonClass}
               >
                 취소
               </Button>
 
               <Button
                 type="button"
-                onClick={handlePasswordSubmit}
                 className={primaryButtonClass}
+                onClick={handlePasswordSubmit}
               >
-                변경하기
+                변경
               </Button>
             </div>
           </div>

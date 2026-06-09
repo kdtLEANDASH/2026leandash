@@ -41,6 +41,9 @@ public class User {
     @Column(name = "birth_date")
     private LocalDate birthDate;
 
+    @Column(name = "hire_date")
+    private LocalDate hireDate;
+
     @Column(name = "address", length = 255)
     private String address;
 
@@ -50,11 +53,29 @@ public class User {
     @Column(name = "position", length = 50)
     private String position;
 
+    @Column(name = "mbti", length = 4)
+    private String mbti;
+
     @Column(name = "user_status", nullable = false, length = 20)
     private String userStatus;
 
     @Column(name = "role", nullable = false, length = 20)
     private String role;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.hireDate == null) {
+            this.hireDate = LocalDate.now();
+        }
+
+        if (this.userStatus == null) {
+            this.userStatus = UserStatus.OFFLINE.name();
+        }
+
+        if (this.role == null) {
+            this.role = Role.USER.name();
+        }
+    }
 
     public UserStatus getUserStatusEnum() {
         return UserStatus.from(userStatus);

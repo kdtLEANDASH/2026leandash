@@ -5,6 +5,7 @@ import com.onlyman.leandash.config.UserPrincipal;
 import com.onlyman.leandash.dto.UserCreateRequest;
 import com.onlyman.leandash.dto.UserLoginRequest;
 import com.onlyman.leandash.dto.UserLoginResponse;
+import com.onlyman.leandash.dto.UserPasswordUpdateRequest;
 import com.onlyman.leandash.dto.UserResponse;
 import com.onlyman.leandash.dto.UserRoleUpdateRequest;
 import com.onlyman.leandash.dto.UserSearchRequest;
@@ -61,7 +62,6 @@ public class UserService {
 
     @Transactional
     public UserLoginResponse login(UserLoginRequest request) {
-
         System.out.println("===== 로그인 시도 =====");
         System.out.println("입력 사번: " + request.getEmployeeNo());
         System.out.println("입력 비밀번호: " + request.getPassword());
@@ -78,11 +78,10 @@ public class UserService {
 
         System.out.println("DB 비밀번호: " + user.getPassword());
 
-        boolean matches =
-                passwordEncoder.matches(
-                        request.getPassword(),
-                        user.getPassword()
-                );
+        boolean matches = passwordEncoder.matches(
+                request.getPassword(),
+                user.getPassword()
+        );
 
         System.out.println("비밀번호 일치 여부: " + matches);
 
@@ -123,6 +122,7 @@ public class UserService {
         String normalizedRole = request.getRole() == null || request.getRole().isBlank()
                 ? null
                 : Role.from(request.getRole()).name();
+
         String normalizedUserStatus = request.getUserStatus() == null || request.getUserStatus().isBlank()
                 ? null
                 : UserStatus.from(request.getUserStatus()).name();
@@ -156,14 +156,40 @@ public class UserService {
     @Transactional
     public UserResponse updateMyProfile(Long currentUserId, UserUpdateRequest request) {
         User user = getUserEntity(currentUserId);
+
+        // 본인은 직급(position)은 수정 못 함.
+        // 이름, 이메일, 전화번호, 주소, MBTI만 수정 가능.
         applyUserUpdate(user, request, false);
+
         return UserResponse.from(user);
+    }
+
+    @Transactional
+    public void updateMyPassword(Long currentUserId, UserPasswordUpdateRequest request) {
+        User user = getUserEntity(currentUserId);
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("새 비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("새 비밀번호는 현재 비밀번호와 달라야 합니다.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
     }
 
     @Transactional
     public UserResponse updateUser(Long userId, UserUpdateRequest request) {
         User user = getUserEntity(userId);
+
+        // 관리자는 직급(position) 수정 가능.
         applyUserUpdate(user, request, true);
+
         return UserResponse.from(user);
     }
 
@@ -213,6 +239,16 @@ public class UserService {
 
         if (request.getAddress() != null) {
             user.setAddress(request.getAddress());
+        }
+
+        if (request.getMbti() != null) {
+            String mbti = request.getMbti().trim().toUpperCase();
+
+            if (mbti.isBlank()) {
+                user.setMbti(null);
+            } else {
+                user.setMbti(mbti);
+            }
         }
 
         if (allowPositionChange && request.getPosition() != null) {
