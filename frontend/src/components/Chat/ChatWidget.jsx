@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Send,
   X,
@@ -24,19 +24,48 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/UI/dialog";
+import { getUsersApi } from "@/api/userApi";
+import {
+  createDirectChatRoomApi,
+  getChatMessagesApi,
+  getMyChatRoomsApi,
+  sendChatMessageApi,
+} from "@/api/chatApi";
+
+function unwrapResponse(response) {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.result)) return response.result;
+  return [];
+}
+
+function unwrapObject(response) {
+  return response?.data || response?.result || response;
+}
+
+function mapUser(user) {
+  return {
+    id: user.userId ?? user.id,
+    name: user.userName ?? user.name ?? "",
+    position: user.position ?? "",
+    department: user.departmentName ?? user.department ?? "",
+    status: user.userStatus ?? user.status ?? "",
+  };
+}
+
+function formatTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
 export function ChatWidget() {
-  const {
-    employees,
-    currentUser,
-    chatRooms,
-    chatMessages,
-    addChatRoom,
-    updateChatRoom,
-    sendMessage: sendChatMessage,
-    customSettings,
-  } = useAppContext();
-
+  const { currentUser, customSettings } = useAppContext();
   const isDark = customSettings?.darkMode;
 
   const [isOpen, setIsOpen] = useState(false);
@@ -53,14 +82,20 @@ export function ChatWidget() {
   const [showParticipants, setShowParticipants] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
+  const [employees, setEmployees] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [messagesByRoom, setMessagesByRoom] = useState({});
+  const [isLoadingRooms, setIsLoadingRooms] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
   const [chatPosition, setChatPosition] = useState({
     x: window.innerWidth - 420,
     y: window.innerHeight - 700,
   });
-
   const [isChatDragging, setIsChatDragging] = useState(false);
-  const chatDragOffsetRef = useRef({ x: 0, y: 0 });
 
+  const chatDragOffsetRef = useRef({ x: 0, y: 0 });
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -116,9 +151,44 @@ export function ChatWidget() {
   const textSub = isDark ? "text-zinc-300" : "text-gray-600";
   const textMuted = isDark ? "text-zinc-400" : "text-gray-500";
 
-  const totalUnread = chatRooms.reduce((sum, room) => sum + room.unread, 0);
+  const employeeMap = useMemo(
+    () => new Map(employees.map((employee) => [employee.id, employee])),
+    [employees]
+  );
 
-  const filteredRooms = chatRooms.filter((room) => {
+  const normalizedRooms = useMemo(() => {
+    if (!currentUser?.id) return [];
+
+    return rooms.map((room) => {
+      const otherUserId =
+        room.userId1 === currentUser.id ? room.userId2 : room.userId1;
+      const otherUser = employeeMap.get(otherUserId);
+
+      return {
+        ...room,
+        id: room.roomId,
+        isGroup: false,
+        participants: [room.userId1, room.userId2],
+        targetUserId: otherUserId,
+        name: otherUser?.name || `사용자 ${otherUserId}`,
+        avatar: (otherUser?.name || "?").charAt(0),
+        online:
+          otherUser?.status === "ONLINE" || otherUser?.status === "업무 중",
+        position: otherUser?.position || "",
+        department: otherUser?.department || "",
+        lastMessage: room.lastMessage || "대화를 시작해보세요",
+        unread: room.unread || 0,
+        timestamp: formatTime(room.updatedAt || room.createdAt),
+      };
+    });
+  }, [rooms, employeeMap, currentUser]);
+
+  const totalUnread = normalizedRooms.reduce(
+    (sum, room) => sum + (room.unread || 0),
+    0
+  );
+
+  const filteredRooms = normalizedRooms.filter((room) => {
     const matchesSearch = room.name
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
@@ -128,25 +198,25 @@ export function ChatWidget() {
     return matchesSearch && !isMyPersonalRoom;
   });
 
-  const selectedRoomData = chatRooms.find((room) => room.id === selectedRoom);
-  const currentMessages = selectedRoom ? chatMessages[selectedRoom] || [] : [];
+  const selectedRoomData = normalizedRooms.find((room) => room.id === selectedRoom);
+  const currentMessages = selectedRoom ? messagesByRoom[selectedRoom] || [] : [];
 
   const isGroupRoom = !!selectedRoomData?.isGroup;
 
   const roomParticipants =
     selectedRoomData?.participants
-      ?.map((id) => employees.find((emp) => emp.id === id))
+      ?.map((id) => employeeMap.get(id))
       .filter(Boolean) || [];
 
   useEffect(() => {
     if (!selectedRoom || !currentUser) return;
 
-    const room = chatRooms.find((item) => item.id === selectedRoom);
+    const room = normalizedRooms.find((item) => item.id === selectedRoom);
 
     if (room && !room.isGroup && room.name === currentUser.name) {
       setSelectedRoom(null);
     }
-  }, [selectedRoom, currentUser, chatRooms]);
+  }, [selectedRoom, currentUser, normalizedRooms]);
 
   useEffect(() => {
     setShowParticipants(false);
@@ -208,6 +278,109 @@ export function ChatWidget() {
     };
   }, [isChatDragging, isMinimized]);
 
+  const loadEmployees = async () => {
+    try {
+      const response = await getUsersApi();
+      setEmployees(unwrapResponse(response).map(mapUser));
+    } catch (error) {
+      console.error("직원 목록 조회 실패:", error);
+    }
+  };
+
+  const loadRooms = async (preferredRoomId = null) => {
+    if (!currentUser?.id) return;
+
+    try {
+      setIsLoadingRooms(true);
+      const response = await getMyChatRoomsApi();
+      const loadedRooms = unwrapResponse(response);
+      setRooms(loadedRooms);
+
+      if (preferredRoomId) {
+        setSelectedRoom(preferredRoomId);
+      } else if (!selectedRoom && loadedRooms.length > 0) {
+        setSelectedRoom(loadedRooms[0].roomId);
+      }
+    } catch (error) {
+      console.error("채팅방 목록 조회 실패:", error);
+    } finally {
+      setIsLoadingRooms(false);
+    }
+  };
+
+  const loadRoomMessages = async (roomId) => {
+    if (!roomId) return;
+
+    try {
+      setIsLoadingMessages(true);
+      const response = await getChatMessagesApi(roomId);
+      const loadedMessages = unwrapResponse(response).map((chatMessage, index) => ({
+        id: `${roomId}-${index}-${chatMessage.sentAt}`,
+        sender: chatMessage.senderName,
+        senderId: chatMessage.senderId,
+        senderName: chatMessage.senderName,
+        content: chatMessage.message,
+        timestamp: formatTime(chatMessage.sentAt),
+        isMe: chatMessage.senderId === currentUser?.id,
+      }));
+
+      const latestMessage = loadedMessages[loadedMessages.length - 1];
+
+      setMessagesByRoom((prev) => ({
+        ...prev,
+        [roomId]: loadedMessages,
+      }));
+
+      if (latestMessage) {
+        setRooms((prev) =>
+          prev.map((room) =>
+            room.roomId === roomId
+              ? {
+                  ...room,
+                  lastMessage: latestMessage.content,
+                  updatedAt: new Date().toISOString(),
+                }
+              : room
+          )
+        );
+      }
+    } catch (error) {
+      console.error("채팅 메시지 조회 실패:", error);
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    loadEmployees();
+    loadRooms();
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (!selectedRoom) return;
+    loadRoomMessages(selectedRoom);
+  }, [selectedRoom, currentUser?.id]);
+
+  useEffect(() => {
+    const handleOpenChatRoom = async (event) => {
+      const roomId = event.detail?.roomId;
+      if (!roomId) return;
+
+      setIsOpen(true);
+      setIsMinimized(false);
+      await loadEmployees();
+      await loadRooms(roomId);
+      setSelectedRoom(roomId);
+    };
+
+    window.addEventListener("open-chat-room", handleOpenChatRoom);
+
+    return () => {
+      window.removeEventListener("open-chat-room", handleOpenChatRoom);
+    };
+  }, [currentUser?.id]);
+
   const handleChatDragStart = (e) => {
     if (e.target.closest("button")) return;
 
@@ -233,28 +406,58 @@ export function ChatWidget() {
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!message.trim() || !selectedRoom || !currentUser) return;
 
-    const nextMessage = message.trim();
-    const timeString = getNowTime();
+    try {
+      setIsSending(true);
+      const nextMessage = message.trim();
+      const response = await sendChatMessageApi(selectedRoom, nextMessage);
+      const sentMessage = unwrapObject(response);
 
-    sendChatMessage(selectedRoom, nextMessage);
+      setMessagesByRoom((prev) => ({
+        ...prev,
+        [selectedRoom]: [
+          ...(prev[selectedRoom] || []),
+          {
+            id: `${selectedRoom}-${Date.now()}`,
+            sender: sentMessage.senderName,
+            senderId: sentMessage.senderId,
+            senderName: sentMessage.senderName,
+            content: sentMessage.message,
+            timestamp: formatTime(sentMessage.sentAt) || getNowTime(),
+            isMe: true,
+          },
+        ],
+      }));
 
-    updateChatRoom(selectedRoom, {
-      lastMessage: nextMessage,
-      timestamp: timeString,
-    });
+      setRooms((prev) =>
+        prev.map((room) =>
+          room.roomId === selectedRoom
+            ? {
+                ...room,
+                lastMessage: nextMessage,
+                updatedAt: new Date().toISOString(),
+              }
+            : room
+        )
+      );
 
-    setMessage("");
+      setMessage("");
 
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-      messagesEndRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "end",
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        messagesEndRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+        });
       });
-    });
+    } catch (error) {
+      console.error("채팅 메시지 전송 실패:", error);
+      alert("메시지를 전송하지 못했습니다.");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleEmojiClick = (emoji) => {
@@ -268,35 +471,13 @@ export function ChatWidget() {
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
+    if (!file) return;
 
-    if (!file || !selectedRoom || !currentUser) return;
-
-    const fileUrl = URL.createObjectURL(file);
     const fileSize = formatFileSize(file.size);
-    const fileMessage = `📎 ${file.name} (${fileSize})`;
-    const timeString = getNowTime();
-
-    sendChatMessage(selectedRoom, {
-      type: "file",
-      content: fileMessage,
-      fileName: file.name,
-      fileSize,
-      fileUrl,
-    });
-
-    updateChatRoom(selectedRoom, {
-      lastMessage: fileMessage,
-      timestamp: timeString,
-    });
-
+    alert(
+      `채팅 첨부파일 전송은 아직 백엔드 미연동입니다.\n선택한 파일: ${file.name} (${fileSize})`
+    );
     e.target.value = "";
-
-    requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "end",
-      });
-    });
   };
 
   const handleSubmit = (e) => {
@@ -322,34 +503,31 @@ export function ChatWidget() {
   };
 
   const createGroupChat = () => {
-    if (!currentUser || selectedParticipants.length === 0) return;
+    alert("그룹 채팅은 아직 백엔드 연동 전입니다.");
+  };
 
-    const groupMembers = Array.from(
-      new Set([currentUser.id, ...selectedParticipants])
-    );
+  const handleCreateDirectChat = async (employee) => {
+    try {
+      const existingRoom = normalizedRooms.find(
+        (room) => !room.isGroup && room.targetUserId === employee.id
+      );
 
-    const displayName =
-      groupName.trim() ||
-      selectedParticipants
-        .map((id) => employees.find((emp) => emp.id === id)?.name)
-        .filter(Boolean)
-        .slice(0, 3)
-        .join(", ") ||
-      "그룹 채팅방";
+      if (existingRoom) {
+        setSelectedRoom(existingRoom.id);
+        resetNewChatModal();
+        return;
+      }
 
-    const newRoomId = addChatRoom({
-      name: displayName,
-      lastMessage: "그룹 채팅방이 생성되었습니다.",
-      timestamp: "방금",
-      unread: 0,
-      avatar: displayName.charAt(0),
-      online: false,
-      isGroup: true,
-      participants: groupMembers,
-    });
+      const response = await createDirectChatRoomApi(employee.id);
+      const room = unwrapObject(response);
 
-    setSelectedRoom(newRoomId);
-    resetNewChatModal();
+      await loadRooms(room.roomId);
+      setSelectedRoom(room.roomId);
+      resetNewChatModal();
+    } catch (error) {
+      console.error("1:1 채팅방 생성 실패:", error);
+      alert("채팅방을 만들지 못했습니다.");
+    }
   };
 
   const renderMessageContent = (msg) => {
@@ -386,6 +564,8 @@ export function ChatWidget() {
       </div>
     );
   };
+
+  if (!currentUser) return null;
 
   if (!isOpen) {
     return (
@@ -583,60 +763,69 @@ export function ChatWidget() {
 
               <ScrollArea className="flex-1 min-h-0">
                 <div className="p-2 space-y-1">
-                  {filteredRooms.map((room) => (
-                    <div
-                      key={room.id}
-                      onClick={() => {
-                        setSelectedRoom(room.id);
-                        updateChatRoom(room.id, { unread: 0 });
-                      }}
-                      className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors",
-                        isDark ? "hover:bg-[#48484f]" : "hover:bg-gray-50"
-                      )}
-                    >
-                      <div className="relative">
-                        <div
-                          className={cn(
-                            "size-12 rounded-full flex items-center justify-center text-2xl text-white",
-                            isDark
-                              ? "bg-[#5c5c73]"
-                              : "bg-gradient-to-br from-blue-400 to-blue-600"
-                          )}
-                        >
-                          {room.avatar}
-                        </div>
-
-                        {room.online && (
-                          <div className="absolute bottom-0 right-0 size-3 bg-green-500 rounded-full border-2 border-white" />
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1 gap-2">
-                          <span className={cn("font-medium truncate", textMain)}>
-                            {room.name}
-                          </span>
-
-                          <span className={cn("text-xs flex-shrink-0", textMuted)}>
-                            {room.timestamp}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-2">
-                          <p className={cn("text-sm truncate", textSub)}>
-                            {room.lastMessage}
-                          </p>
-
-                          {room.unread > 0 && (
-                            <Badge className="ml-2 bg-red-500 text-white flex-shrink-0">
-                              {room.unread}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
+                  {isLoadingRooms ? (
+                    <div className={cn("p-3 text-sm", textMuted)}>
+                      채팅방을 불러오는 중...
                     </div>
-                  ))}
+                  ) : filteredRooms.length === 0 ? (
+                    <div className={cn("p-3 text-sm", textMuted)}>
+                      채팅방이 없습니다.
+                    </div>
+                  ) : (
+                    filteredRooms.map((room) => (
+                      <div
+                        key={room.id}
+                        onClick={() => {
+                          setSelectedRoom(room.id);
+                        }}
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors",
+                          isDark ? "hover:bg-[#48484f]" : "hover:bg-gray-50"
+                        )}
+                      >
+                        <div className="relative">
+                          <div
+                            className={cn(
+                              "size-12 rounded-full flex items-center justify-center text-2xl text-white",
+                              isDark
+                                ? "bg-[#5c5c73]"
+                                : "bg-gradient-to-br from-blue-400 to-blue-600"
+                            )}
+                          >
+                            {room.avatar}
+                          </div>
+
+                          {room.online && (
+                            <div className="absolute bottom-0 right-0 size-3 bg-green-500 rounded-full border-2 border-white" />
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1 gap-2">
+                            <span className={cn("font-medium truncate", textMain)}>
+                              {room.name}
+                            </span>
+
+                            <span className={cn("text-xs flex-shrink-0", textMuted)}>
+                              {room.timestamp}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2">
+                            <p className={cn("text-sm truncate", textSub)}>
+                              {room.lastMessage}
+                            </p>
+
+                            {room.unread > 0 && (
+                              <Badge className="ml-2 bg-red-500 text-white flex-shrink-0">
+                                {room.unread}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </ScrollArea>
             </div>
@@ -644,49 +833,59 @@ export function ChatWidget() {
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               <ScrollArea className="flex-1 min-h-0 p-4">
                 <div className="space-y-4">
-                  {currentMessages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={cn(
-                        "flex",
-                        msg.isMe ? "justify-end" : "justify-start"
-                      )}
-                    >
+                  {isLoadingMessages ? (
+                    <div className={cn("text-sm", textMuted)}>
+                      메시지를 불러오는 중...
+                    </div>
+                  ) : currentMessages.length === 0 ? (
+                    <div className={cn("text-sm", textMuted)}>
+                      첫 메시지를 보내보세요.
+                    </div>
+                  ) : (
+                    currentMessages.map((msg) => (
                       <div
+                        key={msg.id}
                         className={cn(
-                          "max-w-[80%] rounded-lg px-4 py-2",
-                          msg.isMe
-                            ? isDark
-                              ? "bg-[#5c5c73] text-white"
-                              : "bg-blue-600 text-white"
-                            : isDark
-                            ? "bg-[#48484f] text-white"
-                            : "bg-gray-100 text-gray-900"
+                          "flex",
+                          msg.isMe ? "justify-end" : "justify-start"
                         )}
                       >
-                        {!msg.isMe && (
-                          <div className="text-xs font-medium mb-1 opacity-70">
-                            {msg.sender}
-                          </div>
-                        )}
-
-                        {renderMessageContent(msg)}
-
                         <div
                           className={cn(
-                            "text-xs mt-1",
+                            "max-w-[80%] rounded-lg px-4 py-2",
                             msg.isMe
-                              ? "text-zinc-200"
+                              ? isDark
+                                ? "bg-[#5c5c73] text-white"
+                                : "bg-blue-600 text-white"
                               : isDark
-                              ? "text-zinc-300"
-                              : "text-gray-500"
+                              ? "bg-[#48484f] text-white"
+                              : "bg-gray-100 text-gray-900"
                           )}
                         >
-                          {msg.timestamp}
+                          {!msg.isMe && (
+                            <div className="text-xs font-medium mb-1 opacity-70">
+                              {msg.sender}
+                            </div>
+                          )}
+
+                          {renderMessageContent(msg)}
+
+                          <div
+                            className={cn(
+                              "text-xs mt-1",
+                              msg.isMe
+                                ? "text-zinc-200"
+                                : isDark
+                                ? "text-zinc-300"
+                                : "text-gray-500"
+                            )}
+                          >
+                            {msg.timestamp}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
 
                   <div ref={messagesEndRef} />
                 </div>
@@ -781,13 +980,14 @@ export function ChatWidget() {
                     onCompositionEnd={() => setIsComposing(false)}
                     placeholder="메시지를 입력하세요..."
                     className={cn("flex-1 h-9", inputClass)}
+                    disabled={isSending}
                   />
 
                   <Button
                     type="submit"
                     size="sm"
                     className={cn("h-9", primaryButtonClass)}
-                    disabled={!message.trim()}
+                    disabled={!message.trim() || isSending}
                   >
                     <Send className="size-4" />
                   </Button>
@@ -867,33 +1067,14 @@ export function ChatWidget() {
                             .includes(participantSearch.toLowerCase())
                       )
                       .map((emp) => {
-                        const existingRoom = chatRooms.find(
-                          (room) => !room.isGroup && room.name === emp.name
+                        const existingRoom = normalizedRooms.find(
+                          (room) => !room.isGroup && room.targetUserId === emp.id
                         );
 
                         return (
                           <div
                             key={emp.id}
-                            onClick={() => {
-                              if (existingRoom) {
-                                setSelectedRoom(existingRoom.id);
-                              } else {
-                                const newRoomId = addChatRoom({
-                                  name: emp.name,
-                                  lastMessage: "대화를 시작해보세요",
-                                  timestamp: "방금",
-                                  unread: 0,
-                                  avatar: emp.name[0],
-                                  online: emp.status === "업무 중",
-                                  isGroup: false,
-                                  targetUserId: emp.id,
-                                });
-
-                                setSelectedRoom(newRoomId);
-                              }
-
-                              resetNewChatModal();
-                            }}
+                            onClick={() => handleCreateDirectChat(emp)}
                             className={cn(
                               "flex items-center gap-3 p-2 rounded-lg cursor-pointer",
                               isDark ? "hover:bg-[#48484f]" : "hover:bg-gray-100"
