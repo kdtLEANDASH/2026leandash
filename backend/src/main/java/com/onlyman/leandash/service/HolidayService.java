@@ -2,6 +2,7 @@ package com.onlyman.leandash.service;
 
 import com.onlyman.leandash.dto.CalendarEventDto;
 import com.onlyman.leandash.dto.HolidayApiResponseDto;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.w3c.dom.Document;
@@ -9,7 +10,6 @@ import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -18,6 +18,8 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class HolidayService {
@@ -29,6 +31,15 @@ public class HolidayService {
     private String serviceKey;
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
+    
+    private final Map<String, List<HolidayApiResponseDto>> holidayCache = new ConcurrentHashMap<>();
+
+    @PostConstruct
+    public void checkHolidayApiKey() {
+        System.out.println("HOLIDAY_API_KEY 적용 여부 = " + (serviceKey != null && !serviceKey.isBlank()));
+        System.out.println("HOLIDAY_API_KEY 앞 10자리 = " +
+                (serviceKey != null && serviceKey.length() >= 10 ? serviceKey.substring(0, 10) : serviceKey));
+    }
 
     public List<CalendarEventDto> getHolidayEvents(LocalDate startDate, LocalDate endDate) {
         List<CalendarEventDto> holidayEvents = new ArrayList<>();
@@ -63,9 +74,15 @@ public class HolidayService {
     }
 
     private List<HolidayApiResponseDto> fetchMonthlyHolidays(int year, int month) {
+        String cacheKey = year + "-" + String.format("%02d", month);
+
+        if (holidayCache.containsKey(cacheKey)) {
+            return holidayCache.get(cacheKey);
+        }
+
         try {
             String url = HOLIDAY_API_URL
-                    + "?serviceKey=" + URLEncoder.encode(serviceKey, StandardCharsets.UTF_8)
+                    + "?serviceKey=" + serviceKey
                     + "&solYear=" + year
                     + "&solMonth=" + String.format("%02d", month);
 
@@ -83,9 +100,13 @@ public class HolidayService {
                 return List.of();
             }
 
-            return parseHolidayXml(response.body());
+            List<HolidayApiResponseDto> result = parseHolidayXml(response.body());
+            holidayCache.put(cacheKey, result);
+
+            return result;
 
         } catch (Exception e) {
+            e.printStackTrace();
             return List.of();
         }
     }
@@ -125,6 +146,7 @@ public class HolidayService {
             }
 
         } catch (Exception e) {
+            e.printStackTrace();
             return List.of();
         }
 
