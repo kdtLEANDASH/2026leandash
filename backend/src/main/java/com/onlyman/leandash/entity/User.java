@@ -50,6 +50,9 @@ public class User {
     @Column(name = "position", length = 50)
     private String position;
 
+    @Column(name = "mbti", length = 10)
+    private String mbti;
+
     @Column(name = "user_status", nullable = false, length = 20)
     private String userStatus;
 

@@ -156,14 +156,14 @@ public class UserService {
     @Transactional
     public UserResponse updateMyProfile(Long currentUserId, UserUpdateRequest request) {
         User user = getUserEntity(currentUserId);
-        applyUserUpdate(user, request, false);
+        applyUserUpdate(user, request);
         return UserResponse.from(user);
     }
 
     @Transactional
     public UserResponse updateUser(Long userId, UserUpdateRequest request) {
         User user = getUserEntity(userId);
-        applyUserUpdate(user, request, true);
+        applyUserUpdate(user, request);
         return UserResponse.from(user);
     }
 
@@ -197,7 +197,7 @@ public class UserService {
         return userRepository.existsByDepartment_DepartmentId(departmentId);
     }
 
-    private void applyUserUpdate(User user, UserUpdateRequest request, boolean allowPositionChange) {
+    private void applyUserUpdate(User user, UserUpdateRequest request) {
         if (request.getUserName() != null) {
             user.setUserName(request.getUserName());
         }
@@ -215,8 +215,19 @@ public class UserService {
             user.setAddress(request.getAddress());
         }
 
-        if (allowPositionChange && request.getPosition() != null) {
+        if (request.getPosition() != null) {
             user.setPosition(request.getPosition());
+        }
+
+        if (request.getDepartment() != null && !request.getDepartment().isBlank()) {
+            Department department = departmentRepository.findByDepartmentName(request.getDepartment().trim())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 부서입니다."));
+            user.setDepartment(department);
+        }
+
+        if (request.getMbti() != null) {
+            String mbti = request.getMbti().trim().toUpperCase();
+            user.setMbti(mbti.isEmpty() ? null : mbti);
         }
     }
 

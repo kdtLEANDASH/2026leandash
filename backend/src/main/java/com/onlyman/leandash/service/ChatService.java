@@ -1,6 +1,7 @@
 package com.onlyman.leandash.service;
 
 import com.onlyman.leandash.dto.ChatMessageDto;
+import com.onlyman.leandash.dto.ChatRoomResponse;
 import com.onlyman.leandash.entity.ChatMessage;
 import com.onlyman.leandash.entity.ChatRoom;
 import com.onlyman.leandash.entity.User;
@@ -13,63 +14,102 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class ChatService {
 
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+
     private final ChatMessageRepository messageRepository;
     private final ChatRoomRepository roomRepository;
     private final UserRepository userRepository;
 
-    /**
-     * [저장] 프론트에서 온 톡을 DB에 저장 시간 찍어서 돌려줌
-     */
     public ChatMessageDto saveMessage(ChatMessageDto dto) {
-        // 1. 방 찾기
         ChatRoom room = roomRepository.findById(dto.getRoomId())
-                .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을수 없습니다 ID: " + dto.getRoomId()));
+                .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다. ID: " + dto.getRoomId()));
 
-        // 2. 유저 찾기
         User sender = userRepository.findById(dto.getSenderId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다 ID: " + dto.getSenderId()));
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. ID: " + dto.getSenderId()));
 
-        // 3. 엔티티 변환 (이름 빼고 순수하게 ID랑 방 정보만 저장)
-        ChatMessage msg = messageRepository.save(ChatMessage.builder()
+        ChatMessage savedMessage = messageRepository.save(ChatMessage.builder()
                 .chatRoom(room)
-                .senderId(sender.getUserId()) // User 엔티티 PK 이름에 맞게 교체해야함 (getId() 일수도 있음)
+                .senderId(sender.getUserId())
                 .message(dto.getMessage())
                 .build());
 
-        // 4. 저장 후 프론트로 보낼 dto에 맞게 세팅
-        dto.setSenderName(sender.getUserName()); //user 엔티티에 맞게 죠체 필요
-        dto.setSentAt(msg.getCreatedAt().format(DateTimeFormatter.ofPattern("HH:mm")));
+        dto.setSenderName(sender.getUserName());
+        dto.setSentAt(savedMessage.getCreatedAt().format(TIME_FORMATTER));
 
         return dto;
     }
 
-    /**
-     * [조회] 과거 대화 내역 가져오기
-     */
+    @Transactional(readOnly = true)
+    public List<ChatRoomResponse> getRooms(Long currentUserId) {
+        return roomRepository.findByUserId1OrUserId2OrderByUpdatedAtDesc(currentUserId, currentUserId)
+                .stream()
+                .map(ChatRoomResponse::from)
+                .toList();
+    }
+
+    public ChatRoomResponse createOrGetDirectRoom(Long currentUserId, Long targetUserId) {
+        if (currentUserId.equals(targetUserId)) {
+            throw new IllegalArgumentException("자기 자신과의 채팅방은 만들 수 없습니다.");
+        }
+
+        userRepository.findById(currentUserId)
+                .orElseThrow(() -> new IllegalArgumentException("현재 사용자를 찾을 수 없습니다."));
+        userRepository.findById(targetUserId)
+                .orElseThrow(() -> new IllegalArgumentException("대상 사용자를 찾을 수 없습니다."));
+
+        ChatRoom existingRoom = roomRepository.findByUserId1AndUserId2(currentUserId, targetUserId)
+                .or(() -> roomRepository.findByUserId1AndUserId2(targetUserId, currentUserId))
+                .orElse(null);
+
+        if (existingRoom != null) {
+            return ChatRoomResponse.from(existingRoom);
+        }
+
+        ChatRoom createdRoom = roomRepository.save(ChatRoom.builder()
+                .userId1(currentUserId)
+                .userId2(targetUserId)
+                .build());
+
+        return ChatRoomResponse.from(createdRoom);
+    }
+
     @Transactional(readOnly = true)
     public List<ChatMessageDto> getHistory(Long roomId) {
         return messageRepository.findByChatRoomIdOrderByCreatedAtAsc(roomId).stream()
-                .map(m -> {
-                    // 메시지 보낸 사람 ID로 DB 뒤져서 이름 가져오기
-                    String realName = userRepository.findById(m.getSenderId())
-                            .map(User::getUserName) // getUserName() 확인
-                            .orElse("알 수 없는 유조"); // 탈퇴 유저
+                .map(message -> {
+                    String senderName = userRepository.findById(message.getSenderId())
+                            .map(User::getUserName)
+                            .orElse("알 수 없는 사용자");
 
                     return ChatMessageDto.builder()
                             .roomId(roomId)
-                            .senderId(m.getSenderId())
-                            .senderName(realName)
-                            .message(m.getMessage())
-                            .sentAt(m.getCreatedAt().format(DateTimeFormatter.ofPattern("HH:mm")))
+                            .senderId(message.getSenderId())
+                            .senderName(senderName)
+                            .message(message.getMessage())
+                            .sentAt(message.getCreatedAt().format(TIME_FORMATTER))
                             .build();
                 })
-                .collect(Collectors.toList());
+                .toList();
+    }
+
+    public ChatMessageDto sendRestMessage(Long roomId, Long currentUserId, String message) {
+        ChatRoom room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다."));
+
+        if (!room.getUserId1().equals(currentUserId) && !room.getUserId2().equals(currentUserId)) {
+            throw new IllegalArgumentException("해당 채팅방에 접근할 수 없습니다.");
+        }
+
+        return saveMessage(ChatMessageDto.builder()
+                .roomId(roomId)
+                .senderId(currentUserId)
+                .message(message)
+                .build());
     }
 }

@@ -34,7 +34,7 @@ public class FileAttachment extends BaseTimeEntity {
     @Column(name = "file_url", nullable = false, length = 500)
     private String fileUrl;
 
-    @Column(name = "file_type", length = 50)
+    @Column(name = "file_type", length = 255)
     private String fileType;
 
     @Column(name = "file_size")
