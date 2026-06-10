@@ -5,6 +5,7 @@ import com.onlyman.leandash.config.UserPrincipal;
 import com.onlyman.leandash.dto.UserCreateRequest;
 import com.onlyman.leandash.dto.UserLoginRequest;
 import com.onlyman.leandash.dto.UserLoginResponse;
+import com.onlyman.leandash.dto.UserPasswordUpdateRequest;
 import com.onlyman.leandash.dto.UserResponse;
 import com.onlyman.leandash.dto.UserRoleUpdateRequest;
 import com.onlyman.leandash.dto.UserSearchRequest;
@@ -78,11 +79,10 @@ public class UserService {
 
         System.out.println("DB 비밀번호: " + user.getPassword());
 
-        boolean matches =
-                passwordEncoder.matches(
-                        request.getPassword(),
-                        user.getPassword()
-                );
+        boolean matches = passwordEncoder.matches(
+                request.getPassword(),
+                user.getPassword()
+        );
 
         System.out.println("비밀번호 일치 여부: " + matches);
 
@@ -99,6 +99,13 @@ public class UserService {
                 .employeeNo(user.getEmployeeNo())
                 .userName(user.getUserName())
                 .email(user.getEmail())
+                .phone(user.getPhone())
+                .address(user.getAddress())
+                .departmentId(user.getDepartment() == null ? null : user.getDepartment().getDepartmentId())
+                .departmentName(user.getDepartment() == null ? null : user.getDepartment().getDepartmentName())
+                .position(user.getPosition())
+                .mbti(user.getMbti())
+                .hireDate(user.getHireDate())
                 .userStatus(user.getUserStatus())
                 .role(user.getRoleEnum().name())
                 .accessToken(jwtTokenProvider.createAccessToken(principal))
@@ -123,6 +130,7 @@ public class UserService {
         String normalizedRole = request.getRole() == null || request.getRole().isBlank()
                 ? null
                 : Role.from(request.getRole()).name();
+
         String normalizedUserStatus = request.getUserStatus() == null || request.getUserStatus().isBlank()
                 ? null
                 : UserStatus.from(request.getUserStatus()).name();
@@ -156,14 +164,33 @@ public class UserService {
     @Transactional
     public UserResponse updateMyProfile(Long currentUserId, UserUpdateRequest request) {
         User user = getUserEntity(currentUserId);
-        applyUserUpdate(user, request, false);
+        applyUserUpdate(user, request);
         return UserResponse.from(user);
+    }
+
+    @Transactional
+    public void updateMyPassword(Long currentUserId, UserPasswordUpdateRequest request) {
+        User user = getUserEntity(currentUserId);
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("새 비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("새 비밀번호는 현재 비밀번호와 달라야 합니다.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
     }
 
     @Transactional
     public UserResponse updateUser(Long userId, UserUpdateRequest request) {
         User user = getUserEntity(userId);
-        applyUserUpdate(user, request, true);
+        applyUserUpdate(user, request);
         return UserResponse.from(user);
     }
 
@@ -197,7 +224,7 @@ public class UserService {
         return userRepository.existsByDepartment_DepartmentId(departmentId);
     }
 
-    private void applyUserUpdate(User user, UserUpdateRequest request, boolean allowPositionChange) {
+    private void applyUserUpdate(User user, UserUpdateRequest request) {
         if (request.getUserName() != null) {
             user.setUserName(request.getUserName());
         }
@@ -215,8 +242,19 @@ public class UserService {
             user.setAddress(request.getAddress());
         }
 
-        if (allowPositionChange && request.getPosition() != null) {
+        if (request.getPosition() != null) {
             user.setPosition(request.getPosition());
+        }
+
+        if (request.getDepartment() != null && !request.getDepartment().isBlank()) {
+            Department department = departmentRepository.findByDepartmentName(request.getDepartment().trim())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 부서입니다."));
+            user.setDepartment(department);
+        }
+
+        if (request.getMbti() != null) {
+            String mbti = request.getMbti().trim().toUpperCase();
+            user.setMbti(mbti.isEmpty() ? null : mbti);
         }
     }
 

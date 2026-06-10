@@ -463,6 +463,7 @@ export function AppProvider({ children }) {
       department: getDepartmentName(apiUser) || fallbackEmployee?.department || "",
       departmentId: getDepartmentId(apiUser) || fallbackEmployee?.departmentId,
       position: apiUser?.position || fallbackEmployee?.position || "",
+      mbti: apiUser?.mbti || fallbackEmployee?.mbti || "",
       phone: apiUser?.phone || fallbackEmployee?.phone || "",
       address: apiUser?.address || fallbackEmployee?.address || "",
       birthDate:
@@ -498,6 +499,7 @@ export function AppProvider({ children }) {
     localStorage.setItem("userPhone", user?.phone || "");
     localStorage.setItem("userPosition", user?.position || "");
     localStorage.setItem("userDepartment", user?.department || "");
+    localStorage.setItem("userMbti", user?.mbti || "");
   };
 
   const loadMyProfile = async (fallbackUser = null) => {
@@ -533,6 +535,7 @@ export function AppProvider({ children }) {
     const savedPhone = localStorage.getItem("userPhone");
     const savedPosition = localStorage.getItem("userPosition");
     const savedDepartment = localStorage.getItem("userDepartment");
+    const savedMbti = localStorage.getItem("userMbti");
     const savedLoginMode = localStorage.getItem("loginMode");
 
     if (!savedLogin) return;
@@ -552,6 +555,7 @@ export function AppProvider({ children }) {
           phone: savedPhone || savedEmployee?.phone || "",
           position: savedPosition || savedEmployee?.position || "",
           departmentName: savedDepartment || savedEmployee?.department || "",
+          mbti: savedMbti || savedEmployee?.mbti || "",
           role: savedRole || "USER",
           userStatus: savedStatus || "ONLINE",
         },
@@ -579,6 +583,7 @@ export function AppProvider({ children }) {
           phone: savedPhone || "",
           position: savedPosition || "",
           departmentName: savedDepartment || "",
+          mbti: savedMbti || "",
           role: savedRole || "USER",
           userStatus: savedStatus || "ONLINE",
         })
@@ -802,6 +807,7 @@ export function AppProvider({ children }) {
       localStorage.setItem("userPhone", user.phone || "");
       localStorage.setItem("userPosition", user.position || "");
       localStorage.setItem("userDepartment", user.department || "");
+      localStorage.setItem("userMbti", user.mbti || "");
       localStorage.setItem("loginMode", "dummy");
 
       setCurrentUser(user);
@@ -823,6 +829,7 @@ export function AppProvider({ children }) {
     localStorage.removeItem("userPhone");
     localStorage.removeItem("userPosition");
     localStorage.removeItem("userDepartment");
+    localStorage.removeItem("userMbti");
     localStorage.removeItem("loginMode");
 
     setCurrentUser(null);
@@ -1056,6 +1063,7 @@ export function AppProvider({ children }) {
         deleteCalendarEvent,
 
         currentUser,
+        refreshMyProfile: loadMyProfile,
         isAuthenticated,
         login,
         logout,

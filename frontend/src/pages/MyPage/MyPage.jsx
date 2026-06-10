@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   User,
   Mail,
@@ -23,14 +23,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/UI/dialog";
+import { updateMyProfileApi, changeMyPasswordApi } from "@/api/userApi";
 import { useAppContext } from "@/store/AppProvider";
 import { cn } from "@/components/UI/utils";
 
 export function MyPage() {
-  const { currentUser, customSettings } = useAppContext();
+  const { currentUser, customSettings, refreshMyProfile } = useAppContext();
   const isDark = customSettings?.darkMode;
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -45,6 +47,17 @@ export function MyPage() {
     department: currentUser?.department || "",
     mbti: currentUser?.mbti || "",
   });
+
+  useEffect(() => {
+    setFormData({
+      name: currentUser?.name || "",
+      email: currentUser?.email || "",
+      phone: currentUser?.phone || "",
+      position: currentUser?.position || "",
+      department: currentUser?.department || "",
+      mbti: currentUser?.mbti || "",
+    });
+  }, [currentUser]);
 
   const cardClass = isDark
     ? "bg-[#35353d] border-[#5c5c73] text-white"
@@ -70,10 +83,30 @@ export function MyPage() {
     ? "bg-[#2f2f36] border-[#5c5c73] text-white placeholder:text-zinc-400"
     : "";
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // TODO: 실제 저장 로직 구현
     // 현재는 UI 반영용으로 formData 값을 화면에 유지한다.
-    setIsEditing(false);
+    try {
+      setIsSaving(true);
+
+      await updateMyProfileApi({
+        userName: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        position: formData.position,
+        department: formData.department,
+        mbti: formData.mbti,
+      });
+
+      await refreshMyProfile();
+      setIsEditing(false);
+      alert("내 정보가 저장되었습니다.");
+    } catch (error) {
+      console.error("내 정보 수정 실패:", error);
+      alert("내 정보 수정에 실패했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -99,7 +132,7 @@ export function MyPage() {
     setShowPasswordModal(true);
   };
 
-  const handlePasswordSubmit = () => {
+  const handlePasswordSubmit = async () => {
     if (!currentPassword.trim()) {
       alert("현재 비밀번호를 입력해주세요.");
       return;
@@ -120,10 +153,33 @@ export function MyPage() {
       return;
     }
 
-    alert("비밀번호가 변경되었습니다.");
+    try {
+      await changeMyPasswordApi({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
 
-    resetPasswordForm();
-    setShowPasswordModal(false);
+      alert("비밀번호가 변경되었습니다.");
+
+      resetPasswordForm();
+      setShowPasswordModal(false);
+    } catch (error) {
+      console.error("비밀번호 변경 실패:", error);
+
+      let message = "비밀번호 변경에 실패했습니다.";
+
+      try {
+        const parsed = JSON.parse(error.message);
+        message = parsed.message || message;
+      } catch {
+        if (error.message) {
+          message = error.message;
+        }
+      }
+
+      alert(message);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -203,7 +259,7 @@ export function MyPage() {
           </Button>
         ) : (
           <div className="flex gap-2">
-            <Button onClick={handleSave} className={primaryButtonClass}>
+            <Button onClick={handleSave} className={primaryButtonClass} disabled={isSaving}>
               <Save className="size-4 mr-2" />
               저장
             </Button>
@@ -538,7 +594,7 @@ export function MyPage() {
                     )}
                   >
                     <User className="size-4 text-gray-400" />
-                    <span>EMP-{currentUser.id.toString().padStart(4, "0")}</span>
+                    <span>{currentUser.employeeNo || currentUser.employee_no || "-"}</span>
                   </div>
                 </div>
               </div>
