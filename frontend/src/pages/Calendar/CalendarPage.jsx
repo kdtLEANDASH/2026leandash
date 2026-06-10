@@ -52,49 +52,56 @@ export function CalendarPage() {
 
   const currentUserId = currentUser?.userId || currentUser?.id;
 
-  const pageClass = isDark
-    ? "bg-[#27272a] text-white min-h-full"
-    : "bg-gray-50 text-gray-900 min-h-full";
+const isSuperAdmin =
+  currentUser?.role === "최고관리자" || currentUser?.role === "ADMIN";
 
-  const cardClass = isDark
-    ? "bg-[#35353d] border-[#5c5c73] text-white"
-    : "bg-white border-gray-200";
+const isHrAdmin = currentUser?.department === "인사팀";
 
-  const innerCardClass = isDark
-    ? "bg-[#2f2f36] border-[#5c5c73] text-white"
-    : "bg-white border-gray-200";
+const canCreateOfficialSchedule = isSuperAdmin || isHrAdmin;
 
-  const inputClass = isDark
-    ? "bg-[#2f2f36] border-[#5c5c73] text-white placeholder:text-zinc-400"
-    : "";
+const pageClass = isDark
+  ? "bg-[#27272a] text-white min-h-full"
+  : "bg-gray-50 text-gray-900 min-h-full";
 
-  const selectContentClass = isDark
-    ? "bg-[#35353d] border-[#5c5c73] text-white"
-    : "";
+const cardClass = isDark
+  ? "bg-[#35353d] border-[#5c5c73] text-white"
+  : "bg-white border-gray-200";
 
-  const modalClass = isDark
-    ? "bg-[#35353d] border-[#5c5c73] text-white"
-    : "";
+const innerCardClass = isDark
+  ? "bg-[#2f2f36] border-[#5c5c73] text-white"
+  : "bg-white border-gray-200";
 
-  const primaryButtonClass = isDark
-    ? "bg-[#5c5c73] hover:bg-[#6a6a82] text-white"
-    : "bg-blue-600 hover:bg-blue-700 text-white";
+const inputClass = isDark
+  ? "bg-[#2f2f36] border-[#5c5c73] text-white placeholder:text-zinc-400"
+  : "";
 
-  const outlineButtonClass = isDark
-    ? "bg-[#2f2f36] border-[#5c5c73] text-white hover:bg-[#48484f]"
-    : "";
+const selectContentClass = isDark
+  ? "bg-[#35353d] border-[#5c5c73] text-white"
+  : "";
 
-  const ghostButtonClass = isDark
-    ? "text-zinc-200 hover:bg-[#48484f] hover:text-white"
-    : "";
+const modalClass = isDark
+  ? "bg-[#35353d] border-[#5c5c73] text-white"
+  : "";
 
-  const textMain = isDark ? "text-white" : "text-gray-900";
-  const textSub = isDark ? "text-zinc-300" : "text-gray-600";
-  const textMuted = isDark ? "text-zinc-400" : "text-gray-500";
+const primaryButtonClass = isDark
+  ? "bg-[#5c5c73] hover:bg-[#6a6a82] text-white"
+  : "bg-blue-600 hover:bg-blue-700 text-white";
 
-  const calendarBoxClass = isDark
-    ? "bg-[#2f2f36] border-[#5c5c73] text-white"
-    : "bg-white border-gray-200";
+const outlineButtonClass = isDark
+  ? "bg-[#2f2f36] border-[#5c5c73] text-white hover:bg-[#48484f]"
+  : "";
+
+const ghostButtonClass = isDark
+  ? "text-zinc-200 hover:bg-[#48484f] hover:text-white"
+  : "";
+
+const textMain = isDark ? "text-white" : "text-gray-900";
+const textSub = isDark ? "text-zinc-300" : "text-gray-600";
+const textMuted = isDark ? "text-zinc-400" : "text-gray-500";
+
+const calendarBoxClass = isDark
+  ? "bg-[#2f2f36] border-[#5c5c73] text-white"
+  : "bg-white border-gray-200";
 
   const formatDate = (value) => {
     if (!value) return "";
@@ -205,7 +212,6 @@ export function CalendarPage() {
       );
 
       const normalized = Array.isArray(data) ? data.map(normalizeEvent) : [];
-
       setEvents(normalized);
     } catch (error) {
       console.error("일정 조회 실패:", error);
@@ -254,6 +260,14 @@ export function CalendarPage() {
       return;
     }
 
+    if (
+      !canCreateOfficialSchedule &&
+      (formData.type === "COMPANY" || formData.type === "HOLIDAY")
+    ) {
+      alert("전사 일정과 공휴일은 관리자 또는 인사팀만 추가할 수 있습니다.");
+      return;
+    }
+
     try {
       const startTime = formData.startTime || "00:00";
       const endTime = formData.endTime || "23:59";
@@ -267,8 +281,8 @@ export function CalendarPage() {
         scheduleType: formData.type,
         isAllDay: !formData.startTime && !formData.endTime,
         departmentId: null,
-        isOfficial: formData.type === "COMPANY",
-        isHoliday: formData.type === "HOLIDAY",
+        isOfficial: canCreateOfficialSchedule && formData.type === "COMPANY",
+        isHoliday: canCreateOfficialSchedule && formData.type === "HOLIDAY",
         color: null,
         remindAt: null,
       };
@@ -495,12 +509,23 @@ export function CalendarPage() {
                     <SelectContent className={selectContentClass}>
                       <SelectItem value="PERSONAL">개인</SelectItem>
                       <SelectItem value="TEAM">팀</SelectItem>
-                      <SelectItem value="COMPANY">전사</SelectItem>
-                      <SelectItem value="HOLIDAY">공휴일</SelectItem>
+
+                      {canCreateOfficialSchedule && (
+                        <>
+                          <SelectItem value="COMPANY">전사</SelectItem>
+                          <SelectItem value="HOLIDAY">공휴일</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
+              {!canCreateOfficialSchedule && (
+                <div className="text-xs text-gray-500">
+                  일반 직원은 개인/팀 일정만 추가할 수 있습니다.
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

@@ -16,4 +16,6 @@ public class UserUpdateRequest {
     private String phone;
     private String address;
     private String position;
+    private String department;
+    private String mbti;
 }

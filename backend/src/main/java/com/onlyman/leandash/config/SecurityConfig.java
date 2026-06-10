@@ -48,6 +48,10 @@ public class SecurityConfig {
                 		.requestMatchers("/api/chat/**", "/ws/chat/**").permitAll()
                 		.requestMatchers("/api/schedules/**").permitAll()
                 		.requestMatchers("/*.html", "/static/**").permitAll()
+                		.requestMatchers(
+                			    "/api/auth/**",
+                			    "/api/public/**"
+                			).permitAll()
                 		.anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
