@@ -5,6 +5,7 @@ import com.onlyman.leandash.dto.ApiResponse;
 import com.onlyman.leandash.dto.UserCreateRequest;
 import com.onlyman.leandash.dto.UserLoginRequest;
 import com.onlyman.leandash.dto.UserLoginResponse;
+import com.onlyman.leandash.dto.UserPasswordUpdateRequest;
 import com.onlyman.leandash.dto.UserResponse;
 import com.onlyman.leandash.dto.UserRoleUpdateRequest;
 import com.onlyman.leandash.dto.UserSearchRequest;
@@ -74,7 +75,18 @@ public class UserController {
         return ResponseEntity.ok(userService.updateMyProfile(principal.getUserId(), request));
     }
 
-    @GetMapping("/{userId}")
+
+    @PatchMapping("/me/password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> updateMyPassword(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody UserPasswordUpdateRequest request
+    ) {
+        userService.updateMyPassword(principal.getUserId(), request);
+        return ResponseEntity.ok(new ApiResponse<>(true, "password updated", null));
+    }
+ 
+   @GetMapping("/{userId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserResponse> getUser(@PathVariable Long userId) {
         return ResponseEntity.ok(userService.getUser(userId));
