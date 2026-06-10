@@ -37,6 +37,7 @@ export function CalendarPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [filterType, setFilterType] = useState("전체");
   const [loading, setLoading] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
 
   const [formData, setFormData] = useState({
     title: "",
@@ -47,8 +48,8 @@ export function CalendarPage() {
     description: "",
   });
 
-  const selectedYear = date.getFullYear();
-  const selectedMonth = date.getMonth() + 1;
+  const selectedYear = calendarMonth.getFullYear();
+  const selectedMonth = calendarMonth.getMonth() + 1;
 
   const currentUserId = currentUser?.userId || currentUser?.id;
 
@@ -121,9 +122,12 @@ const calendarBoxClass = isDark
   };
 
   const toLocalDate = (dateStr) => {
-    if (!dateStr) return new Date();
+    if (!dateStr) return null;
 
     const [year, month, day] = dateStr.split("-").map(Number);
+
+    if (!year || !month || !day) return null;
+
     return new Date(year, month - 1, day);
   };
 
@@ -244,6 +248,10 @@ const calendarBoxClass = isDark
     fetchVacations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId]);
+  
+  useEffect(() => {
+    console.log("선택된 날짜:", date);
+  }, [date]);
 
   const myApprovedVacations = useMemo(() => {
     return vacations.filter((vacation) => {
@@ -378,31 +386,36 @@ const calendarBoxClass = isDark
   const personalDates = useMemo(() => {
     return combinedEvents
       .filter((event) => event.type === "개인")
-      .map((event) => toLocalDate(event.date));
+      .map((event) => toLocalDate(event.date))
+      .filter(Boolean);
   }, [combinedEvents]);
 
   const teamDates = useMemo(() => {
     return combinedEvents
       .filter((event) => event.type === "팀")
-      .map((event) => toLocalDate(event.date));
+      .map((event) => toLocalDate(event.date))
+      .filter(Boolean);
   }, [combinedEvents]);
 
   const companyDates = useMemo(() => {
     return combinedEvents
       .filter((event) => event.type === "전사")
-      .map((event) => toLocalDate(event.date));
+      .map((event) => toLocalDate(event.date))
+      .filter(Boolean);
   }, [combinedEvents]);
 
   const vacationDates = useMemo(() => {
     return combinedEvents
       .filter((event) => event.type === "휴가")
-      .map((event) => toLocalDate(event.date));
+      .map((event) => toLocalDate(event.date))
+      .filter(Boolean);
   }, [combinedEvents]);
 
   const holidayDates = useMemo(() => {
     return combinedEvents
       .filter((event) => event.type === "공휴일")
-      .map((event) => toLocalDate(event.date));
+      .map((event) => toLocalDate(event.date))
+      .filter(Boolean);
   }, [combinedEvents]);
 
   const getEventColor = (type) => {
@@ -704,7 +717,7 @@ const calendarBoxClass = isDark
                 <div className="space-y-3">
                   {selectedDateEvents.map((event) => (
                     <div
-                      key={event.id}
+                      key={`${event.type}-${event.id || event.date}-${event.title}`}
                       className={cn(
                         "p-3 rounded-lg border",
                         getEventColor(event.type)
@@ -762,7 +775,7 @@ const calendarBoxClass = isDark
                 <div className="space-y-3">
                   {upcomingEvents.map((event) => (
                     <div
-                      key={event.id}
+                      key={`upcoming-${event.type}-${event.id || event.date}-${event.title}`}
                       className={cn(
                         "flex items-start gap-3 p-2 rounded-lg cursor-pointer transition-colors",
                         isDark ? "hover:bg-[#48484f]" : "hover:bg-gray-50"
