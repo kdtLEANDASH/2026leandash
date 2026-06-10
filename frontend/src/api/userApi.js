@@ -18,3 +18,10 @@ export function updateMyProfileApi(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export function changeMyPasswordApi(payload) {
+  return apiRequest("/api/users/me/password", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}

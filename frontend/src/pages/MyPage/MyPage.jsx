@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/UI/dialog";
-import { updateMyProfileApi } from "@/api/userApi";
+import { updateMyProfileApi, changeMyPasswordApi } from "@/api/userApi";
 import { useAppContext } from "@/store/AppProvider";
 import { cn } from "@/components/UI/utils";
 
@@ -39,22 +39,65 @@ export function MyPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const getUserName = (user) => {
+    return user?.name || user?.userName || user?.user_name || "";
+  };
+
+  const getUserDepartment = (user) => {
+    return (
+      user?.department ||
+      user?.departmentName ||
+      user?.department_name ||
+      ""
+    );
+  };
+
+  const getUserHireDate = (user) => {
+    return user?.hireDate || user?.hire_date || "-";
+  };
+
+  const getUserEmployeeNo = (user) => {
+    return user?.employeeNo || user?.employee_no || "-";
+  };
+
+  const getUserStatus = (user) => {
+    return user?.status || user?.userStatus || user?.user_status || "업무 중";
+  };
+
+  const getUserRole = (user) => {
+    const role = user?.role || "";
+
+    if (role === "ADMIN") {
+      return "최고관리자";
+    }
+
+    if (role === "MANAGER") {
+      return "팀장";
+    }
+
+    if (role === "USER") {
+      return "일반직원";
+    }
+
+    return role || "-";
+  };
+
   const [formData, setFormData] = useState({
-    name: currentUser?.name || "",
+    name: getUserName(currentUser),
     email: currentUser?.email || "",
     phone: currentUser?.phone || "",
     position: currentUser?.position || "",
-    department: currentUser?.department || "",
+    department: getUserDepartment(currentUser),
     mbti: currentUser?.mbti || "",
   });
 
   useEffect(() => {
     setFormData({
-      name: currentUser?.name || "",
+      name: getUserName(currentUser),
       email: currentUser?.email || "",
       phone: currentUser?.phone || "",
       position: currentUser?.position || "",
-      department: currentUser?.department || "",
+      department: getUserDepartment(currentUser),
       mbti: currentUser?.mbti || "",
     });
   }, [currentUser]);
@@ -84,18 +127,26 @@ export function MyPage() {
     : "";
 
   const handleSave = async () => {
-    // TODO: 실제 저장 로직 구현
-    // 현재는 UI 반영용으로 formData 값을 화면에 유지한다.
+    if (!formData.name.trim()) {
+      alert("이름을 입력해주세요.");
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      alert("이메일을 입력해주세요.");
+      return;
+    }
+
     try {
       setIsSaving(true);
 
       await updateMyProfileApi({
-        userName: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        position: formData.position,
-        department: formData.department,
-        mbti: formData.mbti,
+        userName: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        position: formData.position.trim(),
+        department: formData.department.trim(),
+        mbti: formData.mbti.trim().toUpperCase(),
       });
 
       await refreshMyProfile();
@@ -103,7 +154,19 @@ export function MyPage() {
       alert("내 정보가 저장되었습니다.");
     } catch (error) {
       console.error("내 정보 수정 실패:", error);
-      alert("내 정보 수정에 실패했습니다.");
+
+      let message = "내 정보 수정에 실패했습니다.";
+
+      try {
+        const parsed = JSON.parse(error.message);
+        message = parsed.message || message;
+      } catch {
+        if (error.message) {
+          message = error.message;
+        }
+      }
+
+      alert(message);
     } finally {
       setIsSaving(false);
     }
@@ -111,11 +174,11 @@ export function MyPage() {
 
   const handleCancel = () => {
     setFormData({
-      name: currentUser?.name || "",
+      name: getUserName(currentUser),
       email: currentUser?.email || "",
       phone: currentUser?.phone || "",
       position: currentUser?.position || "",
-      department: currentUser?.department || "",
+      department: getUserDepartment(currentUser),
       mbti: currentUser?.mbti || "",
     });
 
@@ -132,7 +195,7 @@ export function MyPage() {
     setShowPasswordModal(true);
   };
 
-  const handlePasswordSubmit = () => {
+  const handlePasswordSubmit = async () => {
     if (!currentPassword.trim()) {
       alert("현재 비밀번호를 입력해주세요.");
       return;
@@ -153,27 +216,67 @@ export function MyPage() {
       return;
     }
 
-    alert("비밀번호가 변경되었습니다.");
+    try {
+      await changeMyPasswordApi({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
 
-    resetPasswordForm();
-    setShowPasswordModal(false);
+      alert("비밀번호가 변경되었습니다.");
+
+      resetPasswordForm();
+      setShowPasswordModal(false);
+    } catch (error) {
+      console.error("비밀번호 변경 실패:", error);
+
+      let message = "비밀번호 변경에 실패했습니다.";
+
+      try {
+        const parsed = JSON.parse(error.message);
+        message = parsed.message || message;
+      } catch {
+        if (error.message) {
+          message = error.message;
+        }
+      }
+
+      alert(message);
+    }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
       case "업무 중":
+      case "ONLINE":
         return "bg-green-100 text-green-700";
       case "자리 비움":
+      case "AWAY":
         return "bg-yellow-100 text-yellow-700";
       case "집중 모드":
+      case "FOCUS":
         return "bg-purple-100 text-purple-700";
       case "휴가 중":
+      case "VACATION":
         return "bg-blue-100 text-blue-700";
       case "오프라인":
+      case "OFFLINE":
         return "bg-gray-100 text-gray-700";
       default:
         return "bg-gray-100 text-gray-700";
     }
+  };
+
+  const displayStatus = (status) => {
+    const statusMap = {
+      ONLINE: "업무 중",
+      OFFLINE: "오프라인",
+      AWAY: "자리 비움",
+      FOCUS: "집중 모드",
+      VACATION: "휴가 중",
+    };
+
+    return statusMap[status] || status || "업무 중";
   };
 
   const getMBTIColor = (mbti = "") => {
@@ -189,11 +292,6 @@ export function MyPage() {
     return colors[type] || "bg-gray-100 text-gray-700 hover:bg-gray-100";
   };
 
-  const displayUser = {
-    ...currentUser,
-    ...formData,
-  };
-
   if (!currentUser) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -201,6 +299,20 @@ export function MyPage() {
       </div>
     );
   }
+
+  const displayUser = {
+    ...currentUser,
+    name: formData.name || getUserName(currentUser),
+    email: formData.email || currentUser?.email || "",
+    phone: formData.phone || currentUser?.phone || "",
+    position: formData.position || currentUser?.position || "",
+    department: formData.department || getUserDepartment(currentUser),
+    mbti: formData.mbti || currentUser?.mbti || "",
+    hireDate: getUserHireDate(currentUser),
+    employeeNo: getUserEmployeeNo(currentUser),
+    status: getUserStatus(currentUser),
+    role: getUserRole(currentUser),
+  };
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -236,15 +348,20 @@ export function MyPage() {
           </Button>
         ) : (
           <div className="flex gap-2">
-            <Button onClick={handleSave} className={primaryButtonClass} disabled={isSaving}>
+            <Button
+              onClick={handleSave}
+              className={primaryButtonClass}
+              disabled={isSaving}
+            >
               <Save className="size-4 mr-2" />
-              저장
+              {isSaving ? "저장 중..." : "저장"}
             </Button>
 
             <Button
               onClick={handleCancel}
               variant="outline"
               className={outlineButtonClass}
+              disabled={isSaving}
             >
               <X className="size-4 mr-2" />
               취소
@@ -266,24 +383,24 @@ export function MyPage() {
                       : "bg-gradient-to-br from-blue-600 to-blue-800"
                   )}
                 >
-                  {displayUser.name?.charAt(0)}
+                  {displayUser.name?.charAt(0) || "?"}
                 </div>
 
                 <Badge
                   className={`absolute bottom-2 right-2 ${getStatusColor(
-                    currentUser.status
+                    displayUser.status
                   )}`}
                 >
-                  {currentUser.status}
+                  {displayStatus(displayUser.status)}
                 </Badge>
               </div>
 
               <h3 className={cn("text-xl font-semibold mb-1", textMainClass)}>
-                {displayUser.name}
+                {displayUser.name || "-"}
               </h3>
 
               <p className={cn("text-sm mb-3", textMutedClass)}>
-                {displayUser.position}
+                {displayUser.position || "-"}
               </p>
 
               <Badge className={getMBTIColor(displayUser.mbti)}>
@@ -299,18 +416,20 @@ export function MyPage() {
             >
               <div className="flex items-center gap-3 text-sm">
                 <Briefcase className="size-4 text-gray-400" />
-                <span className={textSubClass}>{displayUser.department}</span>
+                <span className={textSubClass}>
+                  {displayUser.department || "-"}
+                </span>
               </div>
 
               <div className="flex items-center gap-3 text-sm">
                 <Award className="size-4 text-gray-400" />
-                <span className={textSubClass}>{currentUser.role}</span>
+                <span className={textSubClass}>{displayUser.role || "-"}</span>
               </div>
 
               <div className="flex items-center gap-3 text-sm">
                 <Calendar className="size-4 text-gray-400" />
                 <span className={textSubClass}>
-                  입사일: {currentUser.hireDate}
+                  입사일: {displayUser.hireDate || "-"}
                 </span>
               </div>
             </div>
@@ -345,7 +464,7 @@ export function MyPage() {
                       )}
                     >
                       <User className="size-4 text-gray-400" />
-                      <span>{displayUser.name}</span>
+                      <span>{displayUser.name || "-"}</span>
                     </div>
                   )}
                 </div>
@@ -371,7 +490,7 @@ export function MyPage() {
                       )}
                     >
                       <Mail className="size-4 text-gray-400" />
-                      <span>{displayUser.email}</span>
+                      <span>{displayUser.email || "-"}</span>
                     </div>
                   )}
                 </div>
@@ -396,7 +515,7 @@ export function MyPage() {
                       )}
                     >
                       <Phone className="size-4 text-gray-400" />
-                      <span>{displayUser.phone}</span>
+                      <span>{displayUser.phone || "-"}</span>
                     </div>
                   )}
                 </div>
@@ -421,7 +540,7 @@ export function MyPage() {
                       )}
                     >
                       <Briefcase className="size-4 text-gray-400" />
-                      <span>{displayUser.position}</span>
+                      <span>{displayUser.position || "-"}</span>
                     </div>
                   )}
                 </div>
@@ -449,7 +568,7 @@ export function MyPage() {
                       )}
                     >
                       <MapPin className="size-4 text-gray-400" />
-                      <span>{displayUser.department}</span>
+                      <span>{displayUser.department || "-"}</span>
                     </div>
                   )}
                 </div>
@@ -529,7 +648,7 @@ export function MyPage() {
                     )}
                   >
                     <Calendar className="size-4 text-gray-400" />
-                    <span>{currentUser.hireDate}</span>
+                    <span>{displayUser.hireDate || "-"}</span>
                   </div>
                 </div>
 
@@ -543,7 +662,7 @@ export function MyPage() {
                     )}
                   >
                     <Award className="size-4 text-gray-400" />
-                    <span>{currentUser.role}</span>
+                    <span>{displayUser.role || "-"}</span>
                   </div>
                 </div>
 
@@ -557,7 +676,7 @@ export function MyPage() {
                     )}
                   >
                     <div className="size-2 rounded-full bg-green-500" />
-                    <span>{currentUser.status}</span>
+                    <span>{displayStatus(displayUser.status)}</span>
                   </div>
                 </div>
 
@@ -571,7 +690,7 @@ export function MyPage() {
                     )}
                   >
                     <User className="size-4 text-gray-400" />
-                    <span>EMP-{currentUser.id.toString().padStart(4, "0")}</span>
+                    <span>{displayUser.employeeNo || "-"}</span>
                   </div>
                 </div>
               </div>
