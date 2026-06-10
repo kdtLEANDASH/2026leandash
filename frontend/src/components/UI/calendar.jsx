@@ -25,16 +25,12 @@ function Calendar({
     company: companyDates || [],
     vacation: vacationDates || [],
     holiday: holidayDates || [],
-
-    // 추천 휴가 카드를 눌렀을 때 실제 휴가 사용일만 하늘색 표시
     recommended: recommendedDates || [],
-
     underline: underlineDate ? [underlineDate] : [],
-
     saturday: (date) => date.getDay() === 6,
     sunday: (date) => date.getDay() === 0,
   };
-
+  
   const modifiersClassNames = {
     personal: "bg-purple-100 text-purple-900 font-semibold",
     team: "bg-blue-100 text-blue-900 font-semibold",
@@ -47,7 +43,6 @@ function Calendar({
 
     saturday: "text-blue-600",
     sunday: "text-red-600",
-
     underline: "border-b-4 border-gray-900 rounded-none font-bold",
   };
 
@@ -86,9 +81,13 @@ function Calendar({
           "day-range-start aria-selected:bg-primary aria-selected:text-primary-foreground",
         day_range_end:
           "day-range-end aria-selected:bg-primary aria-selected:text-primary-foreground",
+
         day_selected:
-          "bg-slate-100 text-gray-900 hover:bg-slate-100 hover:text-gray-900",
-        day_today: "bg-accent text-accent-foreground",
+          "!bg-slate-200 !text-gray-900 hover:!bg-slate-200 hover:!text-gray-900 font-bold",
+
+        day_today:
+          "border border-slate-300 bg-transparent text-inherit",
+
         day_outside:
           "day-outside text-muted-foreground aria-selected:text-muted-foreground",
         day_disabled: "text-muted-foreground opacity-50",
