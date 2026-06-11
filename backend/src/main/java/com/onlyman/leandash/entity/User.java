@@ -62,6 +62,24 @@ public class User {
     @Column(name = "role", nullable = false, length = 20)
     private String role;
 
+    @Column(name = "dark_mode")
+    private Boolean darkMode;
+
+    @Column(name = "notification_enabled")
+    private Boolean notificationEnabled;
+
+    @Column(name = "header_size", length = 20)
+    private String headerSize;
+
+    @Column(name = "header_display_mode", length = 30)
+    private String headerDisplayMode;
+
+    @Column(name = "hidden_header_items", length = 1000)
+    private String hiddenHeaderItems;
+
+    @Column(name = "header_order", length = 1000)
+    private String headerOrder;
+
     @PrePersist
     public void prePersist() {
         if (this.hireDate == null) {
@@ -74,6 +92,22 @@ public class User {
 
         if (this.role == null) {
             this.role = Role.USER.name();
+        }
+
+        if (this.darkMode == null) {
+            this.darkMode = false;
+        }
+
+        if (this.notificationEnabled == null) {
+            this.notificationEnabled = true;
+        }
+
+        if (this.headerSize == null || this.headerSize.isBlank()) {
+            this.headerSize = "default";
+        }
+
+        if (this.headerDisplayMode == null || this.headerDisplayMode.isBlank()) {
+            this.headerDisplayMode = "iconText";
         }
     }
 

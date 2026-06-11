@@ -25,3 +25,23 @@ export function changeMyPasswordApi(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export function updateMyStatusApi(userStatus) {
+  return apiRequest("/api/users/me/status", {
+    method: "PATCH",
+    body: JSON.stringify({ userStatus }),
+  });
+}
+
+export function getMySettingsApi() {
+  return apiRequest("/api/users/me/settings", {
+    method: "GET",
+  });
+}
+
+export function updateMySettingsApi(payload) {
+  return apiRequest("/api/users/me/settings", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}

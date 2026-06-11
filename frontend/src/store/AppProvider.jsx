@@ -1,7 +1,11 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { getMyProfileApi } from "@/api/userApi";
+import {
+  getMyProfileApi,
+  getMySettingsApi,
+  updateMySettingsApi,
+} from "@/api/userApi";
 export const AppContext = createContext(undefined);
-const SETTINGS_KEY = "leandash_custom_settings";
+const SETTINGS_KEY_PREFIX = "leandash_custom_settings";
 
 const defaultCustomSettings = {
   darkMode: false,
@@ -23,6 +27,44 @@ const defaultCustomSettings = {
     "/approval",
     "/registration-approval",
   ],
+};
+
+const normalizeCustomSettings = (settings = {}) => ({
+  ...defaultCustomSettings,
+  ...settings,
+  hiddenHeaderItems: Array.isArray(settings.hiddenHeaderItems)
+    ? settings.hiddenHeaderItems
+    : defaultCustomSettings.hiddenHeaderItems,
+  headerOrder: Array.isArray(settings.headerOrder) && settings.headerOrder.length > 0
+    ? settings.headerOrder
+    : defaultCustomSettings.headerOrder,
+});
+
+const getSettingsStorageKey = (user) => {
+  const accountKey =
+    user?.userId ||
+    user?.id ||
+    user?.employeeNo ||
+    user?.employee_no ||
+    localStorage.getItem("employeeNo") ||
+    "guest";
+
+  return `${SETTINGS_KEY_PREFIX}_${accountKey}`;
+};
+
+const loadSettingsFromStorage = (user) => {
+  const saved = localStorage.getItem(getSettingsStorageKey(user));
+
+  if (!saved) {
+    return defaultCustomSettings;
+  }
+
+  try {
+    return normalizeCustomSettings(JSON.parse(saved));
+  } catch {
+    localStorage.removeItem(getSettingsStorageKey(user));
+    return defaultCustomSettings;
+  }
 };
 const initialEmployees = [
    
@@ -62,40 +104,61 @@ export function AppProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [registrationRequests, setRegistrationRequests] = useState([]);
   const [documents, setDocuments] = useState(initialDocuments);
-  const [customSettings, setCustomSettings] = useState(() => {
-    const saved = localStorage.getItem(SETTINGS_KEY);
+  const [customSettings, setCustomSettings] = useState(defaultCustomSettings);
 
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
+  const saveSettingsToStorage = (settings, user = currentUser) => {
+    localStorage.setItem(
+      getSettingsStorageKey(user),
+      JSON.stringify(normalizeCustomSettings(settings))
+    );
+  };
 
-        return {
-          ...defaultCustomSettings,
-          ...parsed,
-          hiddenHeaderItems: Array.isArray(parsed.hiddenHeaderItems)
-            ? parsed.hiddenHeaderItems
-            : defaultCustomSettings.hiddenHeaderItems,
-          headerOrder: Array.isArray(parsed.headerOrder)
-            ? parsed.headerOrder
-            : defaultCustomSettings.headerOrder,
-        };
-      } catch {
-        localStorage.removeItem(SETTINGS_KEY);
-      }
+  const loadMySettings = async (user = currentUser) => {
+    const token = localStorage.getItem("accessToken");
+
+    if (!user) {
+      setCustomSettings(defaultCustomSettings);
+      return defaultCustomSettings;
     }
 
-    return defaultCustomSettings;
-  });
+    const localSettings = loadSettingsFromStorage(user);
+    setCustomSettings(localSettings);
 
-  useEffect(() => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(customSettings));
-  }, [customSettings]);
+    if (!token || localStorage.getItem("loginMode") !== "api") {
+      return localSettings;
+    }
+
+    try {
+      const apiSettings = await getMySettingsApi();
+      const normalizedSettings = normalizeCustomSettings(apiSettings);
+
+      setCustomSettings(normalizedSettings);
+      saveSettingsToStorage(normalizedSettings, user);
+
+      return normalizedSettings;
+    } catch (error) {
+      console.warn("계정별 환경설정 조회 실패. 로컬 설정을 임시 사용합니다.", error);
+      return localSettings;
+    }
+  };
 
   const updateCustomSettings = (updates) => {
-    setCustomSettings((prev) => ({
-      ...prev,
-      ...updates,
-    }));
+    setCustomSettings((prev) => {
+      const nextSettings = normalizeCustomSettings({
+        ...prev,
+        ...updates,
+      });
+
+      saveSettingsToStorage(nextSettings);
+
+      if (localStorage.getItem("accessToken") && localStorage.getItem("loginMode") === "api") {
+        updateMySettingsApi(nextSettings).catch((error) => {
+          console.error("계정별 환경설정 저장 실패:", error);
+        });
+      }
+
+      return nextSettings;
+    });
   };
 
   const createInitialChatRooms = () => {
@@ -306,6 +369,7 @@ export function AppProvider({ children }) {
       saveCurrentUserToStorage(normalizedUser, profile);
       setCurrentUser(normalizedUser);
       setIsAuthenticated(true);
+      await loadMySettings(normalizedUser);
 
       return normalizedUser;
     } catch (error) {
@@ -601,6 +665,7 @@ export function AppProvider({ children }) {
 
       setCurrentUser(user);
       setIsAuthenticated(true);
+      setCustomSettings(loadSettingsFromStorage(user));
       return true;
     }
 
@@ -623,6 +688,7 @@ export function AppProvider({ children }) {
 
     setCurrentUser(null);
     setIsAuthenticated(false);
+    setCustomSettings(defaultCustomSettings);
   };
 
   const register = (name, email, password, department, position) => {

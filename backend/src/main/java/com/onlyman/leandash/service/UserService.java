@@ -9,6 +9,8 @@ import com.onlyman.leandash.dto.UserPasswordUpdateRequest;
 import com.onlyman.leandash.dto.UserResponse;
 import com.onlyman.leandash.dto.UserRoleUpdateRequest;
 import com.onlyman.leandash.dto.UserSearchRequest;
+import com.onlyman.leandash.dto.UserSettingsRequest;
+import com.onlyman.leandash.dto.UserSettingsResponse;
 import com.onlyman.leandash.dto.UserStatusUpdateRequest;
 import com.onlyman.leandash.dto.UserUpdateRequest;
 import com.onlyman.leandash.entity.Department;
@@ -22,12 +24,28 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class UserService {
+
+    private static final String DEFAULT_HEADER_ORDER = String.join(",", List.of(
+            "/dashboard",
+            "/notice",
+            "/inquiry",
+            "/employees",
+            "/documents",
+            "/vacation",
+            "/calendar",
+            "/community",
+            "/approval-request",
+            "/evaluation",
+            "/approval",
+            "/registration-approval"
+    ));
 
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
@@ -153,6 +171,42 @@ public class UserService {
         return UserResponse.from(getUserEntity(currentUserId));
     }
 
+    public UserSettingsResponse getMySettings(Long currentUserId) {
+        User user = getUserEntity(currentUserId);
+        return buildSettingsResponse(user);
+    }
+
+    @Transactional
+    public UserSettingsResponse updateMySettings(Long currentUserId, UserSettingsRequest request) {
+        User user = getUserEntity(currentUserId);
+
+        if (request.getDarkMode() != null) {
+            user.setDarkMode(request.getDarkMode());
+        }
+
+        if (request.getNotificationEnabled() != null) {
+            user.setNotificationEnabled(request.getNotificationEnabled());
+        }
+
+        if (request.getHeaderSize() != null && !request.getHeaderSize().isBlank()) {
+            user.setHeaderSize(request.getHeaderSize().trim());
+        }
+
+        if (request.getHeaderDisplayMode() != null && !request.getHeaderDisplayMode().isBlank()) {
+            user.setHeaderDisplayMode(request.getHeaderDisplayMode().trim());
+        }
+
+        if (request.getHiddenHeaderItems() != null) {
+            user.setHiddenHeaderItems(joinList(request.getHiddenHeaderItems()));
+        }
+
+        if (request.getHeaderOrder() != null) {
+            user.setHeaderOrder(joinList(request.getHeaderOrder()));
+        }
+
+        return buildSettingsResponse(user);
+    }
+
     public List<UserResponse> getUsersByDepartment(Long departmentId) {
         validateDepartmentExists(departmentId);
 
@@ -214,6 +268,13 @@ public class UserService {
     }
 
     @Transactional
+    public UserResponse updateMyStatus(Long currentUserId, UserStatusUpdateRequest request) {
+        User user = getUserEntity(currentUserId);
+        user.updateUserStatus(UserStatus.from(request.getUserStatus()));
+        return UserResponse.from(user);
+    }
+
+    @Transactional
     public UserResponse updateUserStatus(Long userId, UserStatusUpdateRequest request) {
         User user = getUserEntity(userId);
         user.updateUserStatus(UserStatus.from(request.getUserStatus()));
@@ -256,6 +317,41 @@ public class UserService {
             String mbti = request.getMbti().trim().toUpperCase();
             user.setMbti(mbti.isEmpty() ? null : mbti);
         }
+    }
+
+
+    private UserSettingsResponse buildSettingsResponse(User user) {
+        return UserSettingsResponse.builder()
+                .darkMode(user.getDarkMode() != null ? user.getDarkMode() : false)
+                .notificationEnabled(user.getNotificationEnabled() != null ? user.getNotificationEnabled() : true)
+                .headerSize(user.getHeaderSize() == null || user.getHeaderSize().isBlank() ? "default" : user.getHeaderSize())
+                .headerDisplayMode(user.getHeaderDisplayMode() == null || user.getHeaderDisplayMode().isBlank() ? "iconText" : user.getHeaderDisplayMode())
+                .hiddenHeaderItems(splitList(user.getHiddenHeaderItems()))
+                .headerOrder(splitList(user.getHeaderOrder() == null || user.getHeaderOrder().isBlank() ? DEFAULT_HEADER_ORDER : user.getHeaderOrder()))
+                .build();
+    }
+
+    private String joinList(List<String> items) {
+        if (items == null || items.isEmpty()) {
+            return "";
+        }
+
+        return items.stream()
+                .filter(item -> item != null && !item.isBlank())
+                .map(String::trim)
+                .reduce((left, right) -> left + "," + right)
+                .orElse("");
+    }
+
+    private List<String> splitList(String value) {
+        if (value == null || value.isBlank()) {
+            return List.of();
+        }
+
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(item -> !item.isBlank())
+                .toList();
     }
 
     private void validateDuplicate(UserCreateRequest request) {

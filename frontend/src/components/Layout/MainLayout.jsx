@@ -47,6 +47,7 @@ import {
 } from "@/components/UI/dialog";
 import { ChatWidget } from "@/components/Chat/ChatWidget";
 import { ChatBotWidget } from "@/components/Chat/ChatBotWidget";
+import { updateMyStatusApi } from "@/api/userApi";
 
 const DEFAULT_HEADER_ORDER = [
   "/dashboard",
@@ -74,6 +75,31 @@ const DARK = {
   sub: "text-zinc-300",
 };
 
+const STATUS_TO_API = {
+  "업무 중": "ONLINE",
+  "자리 비움": "AWAY",
+  "집중 모드": "FOCUS",
+  "휴가 중": "VACATION",
+  "오프라인": "OFFLINE",
+  ONLINE: "ONLINE",
+  AWAY: "AWAY",
+  FOCUS: "FOCUS",
+  VACATION: "VACATION",
+  OFFLINE: "OFFLINE",
+  SEAT_OUT: "AWAY",
+};
+
+const STATUS_TO_LABEL = {
+  ONLINE: "업무 중",
+  AWAY: "자리 비움",
+  FOCUS: "집중 모드",
+  VACATION: "휴가 중",
+  OFFLINE: "오프라인",
+  SEAT_OUT: "자리 비움",
+};
+
+const getStatusLabel = (status) => STATUS_TO_LABEL[status] || status || "업무 중";
+
 export function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -81,6 +107,7 @@ export function MainLayout() {
   const {
     currentUser,
     updateEmployeeStatus,
+    refreshMyProfile,
     logout,
     vacationRequests = [],
     notices = [],
@@ -168,9 +195,34 @@ export function MainLayout() {
 
   const hasAlarmItems = recentNotices.length > 0 || myVacationResults.length > 0;
 
-  const handleStatusChange = (status) => {
-    if (currentUser && updateEmployeeStatus) {
-      updateEmployeeStatus(currentUser.id, status);
+  const handleStatusChange = async (status) => {
+    const statusLabel = getStatusLabel(status);
+    const apiStatus = STATUS_TO_API[status] || STATUS_TO_API[statusLabel] || "ONLINE";
+
+    try {
+      await updateMyStatusApi(apiStatus);
+
+      if (currentUser && updateEmployeeStatus) {
+        updateEmployeeStatus(currentUser.id, statusLabel);
+      }
+
+      localStorage.setItem("userStatus", apiStatus);
+      await refreshMyProfile?.();
+    } catch (error) {
+      console.error("업무 상태 변경 실패:", error);
+
+      let message = "업무 상태 변경에 실패했습니다.";
+
+      try {
+        const parsed = JSON.parse(error.message);
+        message = parsed.message || message;
+      } catch {
+        if (error.message) {
+          message = error.message;
+        }
+      }
+
+      alert(message);
     }
   };
 
@@ -195,7 +247,7 @@ export function MainLayout() {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
+    switch (getStatusLabel(status)) {
       case "업무 중":
         return "bg-green-500";
       case "자리 비움":
@@ -1156,7 +1208,7 @@ export function MainLayout() {
                       </div>
 
                       <Select
-                        value={loginUser?.status || "업무 중"}
+                        value={getStatusLabel(loginUser?.status)}
                         onValueChange={handleStatusChange}
                       >
                         <SelectTrigger
@@ -1172,10 +1224,10 @@ export function MainLayout() {
                               <div
                                 className={cn(
                                   "size-2 rounded-full",
-                                  getStatusColor(loginUser?.status || "업무 중")
+                                  getStatusColor(getStatusLabel(loginUser?.status))
                                 )}
                               ></div>
-                              <span>{loginUser?.status || "업무 중"}</span>
+                              <span>{getStatusLabel(loginUser?.status)}</span>
                             </div>
                           </SelectValue>
                         </SelectTrigger>

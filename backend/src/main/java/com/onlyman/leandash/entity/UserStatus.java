@@ -6,7 +6,9 @@ public enum UserStatus {
     ONLINE,
     OFFLINE,
     AWAY,
-    SEAT_OUT;
+    SEAT_OUT,
+    FOCUS,
+    VACATION;
 
     public static UserStatus from(String value) {
         if (value == null || value.isBlank()) {
