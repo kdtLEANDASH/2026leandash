@@ -2,9 +2,9 @@ spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-    url: jdbc:mysql://localhost:3306/leandash_test?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    url: jdbc:mysql://localhost:3306/leandash?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: root        # 👈 형 MySQL 아이디 (보통 root)
-    password: 4144  # 👈 형 MySQL 비밀번호로 바꿔!
+    password: 1234  # 👈 형 MySQL 비밀번호로 바꿔!
 
   jpa:
     hibernate:
@@ -14,3 +14,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+
+jwt:
+  secret: bGVhbmRhc2gtZGV2LXNlY3JldC1rZXktZm9yLWp3dC10b2tlbi1zaWduaW5nLTEyMzQ1Njc4OTA=
+  access-token-expiration-ms: 3600000
