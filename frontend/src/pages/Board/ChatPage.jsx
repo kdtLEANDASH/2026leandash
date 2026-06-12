@@ -171,9 +171,12 @@ export function ChatPage() {
 
     let cancelled = false;
 
-    async function loadMessages() {
+    async function loadMessages(showLoading = false) {
       try {
-        setIsLoadingMessages(true);
+        if (showLoading) {
+          setIsLoadingMessages(true);
+        }
+
         const response = await getChatMessagesApi(selectedRoomId);
         if (cancelled) return;
 
@@ -189,20 +192,24 @@ export function ChatPage() {
         setMessages(loadedMessages);
       } catch (error) {
         console.error("채팅 메시지 조회 실패:", error);
-        alert("채팅 메시지를 불러오지 못했습니다.");
       } finally {
-        if (!cancelled) {
+        if (!cancelled && showLoading) {
           setIsLoadingMessages(false);
         }
       }
     }
 
-    loadMessages();
+    loadMessages(true);
+
+    const intervalId = setInterval(() => {
+      loadMessages(false);
+    }, 3000);
 
     return () => {
       cancelled = true;
+      clearInterval(intervalId);
     };
-  }, [selectedRoomId, currentUser]);
+  }, [selectedRoomId, currentUser?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
